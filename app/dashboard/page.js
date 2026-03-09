@@ -15,7 +15,7 @@ export default function Dashboard() {
   const [childBirthday, setChildBirthday] = useState('');
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [story, setStory] = useState(null);
+  const [story, setStory] = useState([]);
   const [showStory, setShowStory] = useState(false);
   const router = useRouter();
 
@@ -62,7 +62,7 @@ return 'Good night';
     if (data) setMemories(data);
   };
 
-  const generateStory = async () => {
+ const generateStory = async (regenerate = false) => {
   if (memories.length === 0) {
     alert('Add some memories first!');
     return;
@@ -75,19 +75,20 @@ return 'Good night';
       body: JSON.stringify({
         childId: child.id,
         childName: child.name,
-        childAge: getAge(child.birthday)
+        childAge: getAge(child.birthday),
+        regenerate
       })
     });
     const data = await res.json();
-    if (data.story) {
-      setStory(data.story);
+    if (data.chapters) {
+      setStory(data.chapters);
       setShowStory(true);
     }
   } catch (err) {
     console.error(err);
   }
   setGenerating(false);
-};
+}; 
 
   const saveChild = async () => {
     setSaving(true);
@@ -550,42 +551,134 @@ return 'Good night';
         </div>
       )}
       {/* Story Modal */}
-{showStory && story && (
-  <div className="modal-overlay">
-    <div className="modal" style={{maxWidth: '680px'}}>
+      {showStory && story && story.length > 0 && (
+  <div className="modal-overlay" onClick={() => setShowStory(false)}>
+    <div
+      className="modal"
+      style={{maxWidth:'680px', maxHeight:'85vh', overflowY:'auto'}}
+      onClick={e => e.stopPropagation()}
+    >
+      {/* Book header */}
       <div style={{
-        height: '4px',
-        background: 'linear-gradient(90deg, #F2E4DC, #E4DEED, #D6E5D8)',
-        borderRadius: '4px 4px 0 0',
-        margin: '-48px -48px 40px'
-      }} />
+        height:'4px',
+        background:'linear-gradient(90deg,#F2E4DC,#E4DEED,#D6E5D8)',
+        borderRadius:'4px 4px 0 0',
+        margin:'-48px -48px 40px'
+      }}/>
+
       <div style={{
-        fontSize: '11px', letterSpacing: '2.5px',
-        textTransform: 'uppercase', color: '#B07D5B',
-        marginBottom: '12px'
+        textAlign:'center', marginBottom:'40px',
+        paddingBottom:'32px',
+        borderBottom:'1px solid rgba(201,184,168,0.2)'
       }}>
-        ✦ {child.name}&apos;s Story
+        <div style={{
+          fontSize:'11px', letterSpacing:'3px',
+          textTransform:'uppercase', color:'#B07D5B', marginBottom:'12px'
+        }}>
+          The Story of
+        </div>
+        <h1 style={{
+          fontFamily:"'Cormorant Garamond', serif",
+          fontSize:'42px', fontWeight:'300', color:'#2E2118'
+        }}>
+          {child.name}
+        </h1>
+        <div style={{fontSize:'13px', color:'#A8917E', marginTop:'8px'}}>
+          {story.length} {story.length === 1 ? 'Chapter' : 'Chapters'} · A Family Story
+        </div>
       </div>
-      <h2 className="modal-title" style={{fontSize: '32px', marginBottom: '32px'}}>
-        <em>{story.title}</em>
-      </h2>
-      <p style={{
-        fontFamily: "'Cormorant Garamond', serif",
-        fontSize: '18px', color: '#6B5744',
-        lineHeight: '1.9', fontStyle: 'italic',
-        marginBottom: '40px',
-        whiteSpace: 'pre-line'
+
+      {/* All chapters */}
+      {story.map((chapter, index) => (
+        <div key={chapter.id} style={{marginBottom:'48px'}}>
+          <div style={{
+            fontSize:'10px', letterSpacing:'2.5px',
+            textTransform:'uppercase', color:'#B07D5B',
+            marginBottom:'8px'
+          }}>
+            Chapter {chapter.chapter_number}
+          </div>
+          <h2 style={{
+            fontFamily:"'Cormorant Garamond', serif",
+            fontSize:'28px', fontWeight:'600',
+            color:'#2E2118', marginBottom:'24px',
+            fontStyle:'italic'
+          }}>
+            {chapter.title}
+          </h2>
+          <p style={{
+            fontFamily:"'Cormorant Garamond', serif",
+            fontSize:'18px', color:'#6B5744',
+            lineHeight:'1.9', fontStyle:'italic',
+            whiteSpace:'pre-line'
+          }}>
+            {chapter.content}
+          </p>
+          {index < story.length - 1 && (
+            <div style={{
+              textAlign:'center', margin:'40px 0 0',
+              color:'#C9B8A8', fontSize:'20px',
+              letterSpacing:'8px'
+            }}>
+              · · ·
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/* Buttons */}
+      <div style={{
+        borderTop:'1px solid rgba(201,184,168,0.2)',
+        paddingTop:'32px', display:'flex', gap:'12px'
       }}>
-        {story.content}
-      </p>
-      <div className="modal-buttons">
         <button className="btn-save" onClick={() => setShowStory(false)}>
           Close
+        </button>
+        <button
+          className="btn-cancel"
+          onClick={() => { setShowStory(false); generateStory(true); }}
+        >
+          Regenerate Story
         </button>
       </div>
     </div>
   </div>
 )}
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
     </>
   );
 }
