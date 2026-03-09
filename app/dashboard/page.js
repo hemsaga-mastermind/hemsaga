@@ -22,6 +22,8 @@ export default function Dashboard() {
   const [story, setStory] = useState([]);
   const [showStory, setShowStory] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
+  const [cartoonizing, setCartoonizing] = useState(false);
+  const [childCartoonUrl, setChildCartoonUrl] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -52,6 +54,7 @@ export default function Dashboard() {
       .single();
     if (data) {
       setChild(data);
+      if (data.cartoon_url) setChildCartoonUrl(data.cartoon_url);
       await getMemories(data.id);
     }
   };
@@ -157,6 +160,38 @@ export default function Dashboard() {
       setInviteLink(`https://hemsaga.com/family/${data.token}`);
     }
   };
+
+  const generateCartoon = async (photoUrl) => {
+  if (!photoUrl) {
+    alert('Upload a photo first to generate a cartoon!');
+    return;
+  }
+  setCartoonizing(true);
+  try {
+    const res = await fetch('/api/cartoonify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        imageUrl: photoUrl,
+        childName: String(child.name)
+      })
+    });
+    const data = await res.json();
+    if (data.cartoonUrl) {
+      // Save cartoon URL to child profile
+      await supabase
+        .from('children')
+        .update({ cartoon_url: data.cartoonUrl })
+        .eq('id', child.id);
+      setChildCartoonUrl(data.cartoonUrl);
+      setChild({ ...child, cartoon_url: data.cartoonUrl });
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Cartoon generation failed. Check your Replicate API key.');
+  }
+  setCartoonizing(false);
+};
 
   const getAge = (birthday) => {
     const birth = new Date(birthday);
@@ -505,7 +540,18 @@ export default function Dashboard() {
           <>
             {/* Child card */}
             <div className="child-card">
-              <div className="child-avatar">🌟</div>
+              <div className="child-avatar"> {childCartoonUrl ? (
+    <img
+      src={childCartoonUrl}
+      alt={`${child.name} cartoon`}
+      style={{
+        width: '100%', height: '100%',
+        objectFit: 'cover', borderRadius: '50%'
+      }}
+    />
+  ) : (
+    <span>🌟</span>
+  )}</div>
               <div className="child-info">
                 <div className="child-name">{child.name}</div>
                 <div className="child-age">{getAge(child.birthday)} · Born {formatDate(child.birthday)}</div>
