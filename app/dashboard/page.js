@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'next/navigation';
+import StoryReader from './StoryReader';
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -1196,36 +1197,17 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ━━━━━ STORY READER MODAL ━━━━━ */}
+      {/* ━━━━━ STORY READER ━━━━━ */}
       {showStory && story && story.length > 0 && (
-        <div className="overlay" onClick={() => setShowStory(false)}>
-          <div className="modal story-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-bar" />
-            <div className="story-header">
-              {childCartoonUrl && (
-                <img src={childCartoonUrl} alt={child.name} style={{ width: 68, height: 68, borderRadius: '50%', objectFit: 'cover', border: '3px solid #F5DEC8', display: 'block', margin: '0 auto 16px' }} />
-              )}
-              <div className="story-eyebrow">The Story of</div>
-              <div className="story-book-title">{child.name}</div>
-              <div className="story-meta">{story.length} {story.length === 1 ? 'Chapter' : 'Chapters'} · A Family Novel</div>
-            </div>
-
-            {story.map((ch, i) => (
-              <div key={ch.id} className="chapter-block">
-                <div className="chapter-num">Chapter {ch.chapter_number}</div>
-                <div className="chapter-title">{ch.title}</div>
-                <div className="chapter-body">{ch.content}</div>
-                {i < story.length - 1 && <div className="chapter-sep">· · ·</div>}
-              </div>
-            ))}
-
-            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 24, display: 'flex', gap: 10 }}>
-              <button className="btn-modal-save" onClick={() => setShowStory(false)}>Close</button>
-              <button className="btn-modal-cancel" onClick={() => { setShowStory(false); generateStory(true); }}>Regenerate</button>
-            </div>
-          </div>
-        </div>
+        <StoryReader
+          chapters={story}
+          childName={child?.name}
+          avatarUrl={childCartoonUrl}
+          onClose={() => setShowStory(false)}
+          onRegenerate={() => { setShowStory(false); generateStory(true); }}
+        />
       )}
+
     </>
   );
 }
