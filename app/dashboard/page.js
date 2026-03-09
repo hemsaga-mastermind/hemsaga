@@ -14,6 +14,9 @@ export default function Dashboard() {
   const [childName, setChildName] = useState('');
   const [childBirthday, setChildBirthday] = useState('');
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [story, setStory] = useState(null);
+  const [showStory, setShowStory] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -58,6 +61,33 @@ return 'Good night';
       .order('created_at', { ascending: false });
     if (data) setMemories(data);
   };
+
+  const generateStory = async () => {
+  if (memories.length === 0) {
+    alert('Add some memories first!');
+    return;
+  }
+  setGenerating(true);
+  try {
+    const res = await fetch('/api/generate-story', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        childId: child.id,
+        childName: child.name,
+        childAge: getAge(child.birthday)
+      })
+    });
+    const data = await res.json();
+    if (data.story) {
+      setStory(data.story);
+      setShowStory(true);
+    }
+  } catch (err) {
+    console.error(err);
+  }
+  setGenerating(false);
+};
 
   const saveChild = async () => {
     setSaving(true);
@@ -114,9 +144,31 @@ return 'Good night';
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Jost:wght@300;400;500&display=swap');
         * { margin:0; padding:0; box-sizing:border-box; }
-        body { background:#FAF7F2; font-family:'Jost',sans-serif; }
-
-        .dash-nav {
+              body { background:#FAF7F2; font-family:'Jost',sans-serif; }
+          .btn-generate {
+              width: 100%;
+              padding: 20px;
+              background: linear-gradient(135deg, #2E2118, #4A3428);
+              border: none;
+              border-radius: 16px;
+              font-family: 'Cormorant Garamond', serif;
+              font-size: 22px;
+              color: #FAF7F2;
+              cursor: pointer;
+              transition: all 0.3s ease;
+              margin-bottom: 16px;
+              letter-spacing: 0.5px;
+              }
+              tn-generate:hover {
+              transform: translateY(-3px);
+              box-shadow: 0 12px 40px rgba(46,33,24,0.25);
+              }
+              tn-generate:disabled {
+              opacity: 0.7;
+              cursor: not-allowed;
+              transform: none;
+              }
+          .dash-nav {
           background: white;
           border-bottom: 1px solid rgba(201,184,168,0.2);
           padding: 20px 48px;
@@ -418,7 +470,18 @@ return 'Good night';
                 </div>
               </div>
             </div>
-
+           
+            {/* Generate Story Button */}
+            {memories.length > 0 && (
+              <button
+                className="btn-generate"
+                onClick={generateStory}
+                disabled={generating}
+              >
+                {generating ? '✦ Weaving your story...' : '✦ Generate Story Chapter'}
+              </button>
+             )
+            }
             {/* Add memory */}
             <button className="btn-add-memory" onClick={() => setShowAddMemory(true)}>
               ✦ &nbsp; What happened today with {child.name}?
@@ -486,6 +549,43 @@ return 'Good night';
           </div>
         </div>
       )}
+      {/* Story Modal */}
+{showStory && story && (
+  <div className="modal-overlay">
+    <div className="modal" style={{maxWidth: '680px'}}>
+      <div style={{
+        height: '4px',
+        background: 'linear-gradient(90deg, #F2E4DC, #E4DEED, #D6E5D8)',
+        borderRadius: '4px 4px 0 0',
+        margin: '-48px -48px 40px'
+      }} />
+      <div style={{
+        fontSize: '11px', letterSpacing: '2.5px',
+        textTransform: 'uppercase', color: '#B07D5B',
+        marginBottom: '12px'
+      }}>
+        ✦ {child.name}&apos;s Story
+      </div>
+      <h2 className="modal-title" style={{fontSize: '32px', marginBottom: '32px'}}>
+        <em>{story.title}</em>
+      </h2>
+      <p style={{
+        fontFamily: "'Cormorant Garamond', serif",
+        fontSize: '18px', color: '#6B5744',
+        lineHeight: '1.9', fontStyle: 'italic',
+        marginBottom: '40px',
+        whiteSpace: 'pre-line'
+      }}>
+        {story.content}
+      </p>
+      <div className="modal-buttons">
+        <button className="btn-save" onClick={() => setShowStory(false)}>
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </>
   );
 }
