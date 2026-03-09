@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'next/navigation';
 import StoryReader from './StoryReader';
@@ -29,9 +29,11 @@ export default function Dashboard() {
   const [childCartoonUrl, setChildCartoonUrl] = useState(null);
   const [cartoonPhoto, setCartoonPhoto] = useState(null);
   const [cartoonPhotoPreview, setCartoonPhotoPreview] = useState(null);
+  const [entered, setEntered] = useState(false);
   const router = useRouter();
 
   useEffect(() => { getUser(); }, []);
+  useEffect(() => { if (!loading) setTimeout(() => setEntered(true), 80); }, [loading]);
 
   const getUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -145,716 +147,646 @@ export default function Dashboard() {
   const formatDate = (d) => new Date(d).toLocaleDateString('en-SE', { day: 'numeric', month: 'long', year: 'numeric' });
   const formatShort = (d) => new Date(d).toLocaleDateString('en-SE', { day: 'numeric', month: 'short' });
 
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Papa';
+
   if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', fontFamily: 'var(--font-serif)', fontSize: '22px', color: 'var(--accent)' }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '40px', marginBottom: '16px', animation: 'pulse 2s infinite' }}>📖</div>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0C0906', fontFamily: "'Playfair Display', serif", fontSize: '20px', color: 'rgba(245,222,200,0.5)' }}>
+      <div style={{ textAlign: 'center', animation: 'db-pulse 2s ease infinite' }}>
+        <div style={{ fontSize: '36px', marginBottom: '14px' }}>📖</div>
         Loading your family story…
       </div>
     </div>
   );
 
-  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Papa';
-
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600&family=DM+Sans:wght@300;400;500&display=swap');
 
         :root {
-          --bg: #F7F2EC;
-          --surface: #FFFFFF;
-          --surface-2: #F0EAE1;
-          --border: rgba(190,170,150,0.18);
-          --border-hover: rgba(176,125,91,0.35);
-          --text: #241A12;
-          --text-2: #7A6352;
-          --text-3: #B09A87;
-          --accent: #A0643A;
-          --accent-light: rgba(160,100,58,0.09);
-          --dark: #201610;
-          --dark-2: #3A2518;
-          --gradient: linear-gradient(135deg, #201610 0%, #3A2518 55%, #4E3020 100%);
+          --bg:       #0C0906;
+          --bg-2:     #130F0A;
+          --surface:  rgba(255,255,255,0.04);
+          --surface-hover: rgba(255,255,255,0.07);
+          --border:   rgba(245,222,200,0.08);
+          --border-h: rgba(245,222,200,0.2);
+          --text:     rgba(245,222,200,0.92);
+          --text-2:   rgba(245,222,200,0.5);
+          --text-3:   rgba(245,222,200,0.28);
+          --accent:   #C4926A;
+          --accent-d: #A0643A;
+          --accent-glow: rgba(196,146,106,0.15);
+          --gold:     #E8C88A;
+          --sidebar-w: 268px;
           --font-serif: 'Playfair Display', Georgia, serif;
-          --font-sans: 'DM Sans', system-ui, sans-serif;
-          --radius: 18px;
-          --radius-sm: 12px;
-          --sidebar-w: 272px;
-          --shadow: 0 4px 24px rgba(36,26,18,0.07);
-          --shadow-lg: 0 12px 48px rgba(36,26,18,0.12);
+          --font-sans:  'DM Sans', system-ui, sans-serif;
+          --radius: 16px;
+          --radius-sm: 10px;
         }
 
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: var(--bg); font-family: var(--font-sans); color: var(--text); -webkit-font-smoothing: antialiased; }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
-        @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-        @keyframes spin { to{transform:rotate(360deg)} }
-        @keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+        html, body { background: var(--bg); color: var(--text); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 
-        /* ━━━━━ LAYOUT ━━━━━ */
-        .layout { display: flex; min-height: 100vh; }
+        /* ── Keyframes ── */
+        @keyframes db-pulse    { 0%,100%{opacity:.5} 50%{opacity:1} }
+        @keyframes db-float    { 0%{transform:translateY(100vh) scale(0);opacity:0} 8%{opacity:.5} 92%{opacity:.2} 100%{transform:translateY(-8vh) scale(1.6);opacity:0} }
+        @keyframes db-fadein   { from{opacity:0} to{opacity:1} }
+        @keyframes db-up       { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes db-glow-pulse { 0%,100%{opacity:.18} 50%{opacity:.32} }
+        @keyframes db-spin     { to{transform:rotate(360deg)} }
+        @keyframes db-shimmer  { 0%{transform:translateX(-100%) skewX(-15deg)} 100%{transform:translateX(220%) skewX(-15deg)} }
+        @keyframes db-avatar-glow { 0%,100%{box-shadow:0 0 24px rgba(196,146,106,.15),0 0 0 2px rgba(196,146,106,.12)} 50%{box-shadow:0 0 48px rgba(196,146,106,.35),0 0 0 2px rgba(196,146,106,.3)} }
+        @keyframes db-card-in  { from{opacity:0;transform:translateY(28px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+
+        /* ── Layout ── */
+        .db-layout { display:flex; min-height:100vh; }
 
         /* ━━━━━ SIDEBAR ━━━━━ */
-        .sidebar {
-          width: var(--sidebar-w);
-          position: fixed; top: 0; left: 0; height: 100vh;
-          background: var(--gradient);
-          display: flex; flex-direction: column;
-          z-index: 100; overflow: hidden;
+        .db-sidebar {
+          width: var(--sidebar-w); position:fixed; top:0; left:0; height:100vh;
+          background: #0A0806;
+          border-right: 1px solid var(--border);
+          display:flex; flex-direction:column; z-index:100; overflow:hidden;
         }
-        .sidebar-glow {
-          position: absolute; top: -80px; right: -80px;
-          width: 260px; height: 260px; border-radius: 50%;
-          background: radial-gradient(circle, rgba(255,220,190,0.06) 0%, transparent 70%);
-          pointer-events: none;
+        .db-sb-glow1 {
+          position:absolute; top:-120px; right:-80px;
+          width:320px; height:320px; border-radius:50%;
+          background:radial-gradient(circle,rgba(196,146,106,.07) 0%,transparent 70%);
+          pointer-events:none; animation:db-glow-pulse 6s ease-in-out infinite;
         }
-        .sidebar-glow-2 {
-          position: absolute; bottom: -100px; left: -60px;
-          width: 300px; height: 300px; border-radius: 50%;
-          background: radial-gradient(circle, rgba(160,100,58,0.08) 0%, transparent 70%);
-          pointer-events: none;
+        .db-sb-glow2 {
+          position:absolute; bottom:-120px; left:-80px;
+          width:360px; height:360px; border-radius:50%;
+          background:radial-gradient(circle,rgba(196,146,106,.05) 0%,transparent 70%);
+          pointer-events:none; animation:db-glow-pulse 8s ease-in-out infinite 2s;
         }
 
         /* Brand */
-        .sb-brand {
-          padding: 28px 24px 22px;
-          border-bottom: 1px solid rgba(255,255,255,0.06);
-          position: relative; z-index: 1;
+        .db-brand {
+          padding:26px 22px 20px; position:relative; z-index:1;
+          border-bottom:1px solid var(--border);
         }
-        .sb-logo {
-          font-family: var(--font-serif);
-          font-size: 22px; font-weight: 700;
-          color: #FAF6F0; letter-spacing: 0.5px;
-          display: flex; align-items: center; gap: 9px;
-          margin-bottom: 3px;
+        .db-logo {
+          font-family:var(--font-serif); font-size:21px; font-weight:700;
+          color:var(--text); display:flex; align-items:center; gap:10px;
+          margin-bottom:4px;
         }
-        .sb-logo-icon {
-          width: 32px; height: 32px; border-radius: 9px;
-          background: rgba(255,255,255,0.1);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 16px;
+        .db-logo-icon {
+          width:30px; height:30px; border-radius:8px;
+          background:rgba(196,146,106,.15); border:1px solid rgba(196,146,106,.2);
+          display:flex; align-items:center; justify-content:center; font-size:15px;
         }
-        .sb-tagline {
-          font-size: 10.5px; color: rgba(250,246,240,0.3);
-          letter-spacing: 2px; text-transform: uppercase;
-          padding-left: 41px;
+        .db-tagline {
+          font-size:9.5px; color:var(--text-3); letter-spacing:2.5px;
+          text-transform:uppercase; padding-left:40px;
         }
 
-        /* Child profile block */
-        .sb-profile {
-          padding: 22px 24px;
-          border-bottom: 1px solid rgba(255,255,255,0.06);
-          position: relative; z-index: 1;
+        /* Profile */
+        .db-profile {
+          padding:18px 18px 0; position:relative; z-index:1;
         }
-        .sb-profile-inner {
-          display: flex; align-items: center; gap: 14px;
-          padding: 14px; border-radius: var(--radius-sm);
-          background: rgba(255,255,255,0.05);
-          transition: background 0.2s;
-          cursor: pointer;
+        .db-profile-btn {
+          display:flex; align-items:center; gap:12px; width:100%;
+          padding:12px 14px; border-radius:var(--radius-sm);
+          background:var(--surface); border:1px solid var(--border);
+          cursor:pointer; transition:all .22s;
+          border-bottom: none; border-radius: 12px 12px 0 0;
+          background: linear-gradient(135deg, rgba(196,146,106,.08), rgba(196,146,106,.04));
         }
-        .sb-profile-inner:hover { background: rgba(255,255,255,0.09); }
-        .sb-avatar {
-          width: 48px; height: 48px; border-radius: 50%;
-          background: linear-gradient(135deg, #F5DEC8, #EDD0BC);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 20px; flex-shrink: 0; overflow: hidden;
-          border: 2px solid rgba(245,222,200,0.2);
-          position: relative;
+        .db-profile-btn:hover { background:rgba(196,146,106,.12); border-color:rgba(196,146,106,.2); }
+        .db-avatar-wrap {
+          position:relative; flex-shrink:0;
         }
-        .sb-avatar img { width: 100%; height: 100%; object-fit: cover; }
-        .sb-avatar-badge {
-          position: absolute; bottom: -1px; right: -1px;
-          width: 16px; height: 16px; background: var(--accent);
-          border-radius: 50%; border: 2px solid var(--dark);
-          font-size: 7px; display: flex; align-items: center; justify-content: center;
-          color: white;
+        .db-avatar {
+          width:46px; height:46px; border-radius:50%;
+          background:linear-gradient(135deg,rgba(196,146,106,.3),rgba(196,146,106,.1));
+          display:flex; align-items:center; justify-content:center;
+          font-size:20px; overflow:hidden;
+          animation:db-avatar-glow 4s ease-in-out infinite;
         }
-        .sb-child-name {
-          font-family: var(--font-serif);
-          font-size: 18px; font-weight: 600; color: #FAF6F0;
-          line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        .db-avatar img { width:100%; height:100%; object-fit:cover; }
+        .db-avatar-ring {
+          position:absolute; inset:-3px; border-radius:50%;
+          border:1.5px solid rgba(196,146,106,.25);
+          pointer-events:none;
         }
-        .sb-child-age {
-          font-size: 11px; color: rgba(250,246,240,0.4);
-          margin-top: 2px; letter-spacing: 0.3px;
+        .db-avatar-edit {
+          position:absolute; bottom:-1px; right:-1px;
+          width:15px; height:15px; border-radius:50%;
+          background:var(--accent); border:2px solid var(--bg);
+          font-size:7px; display:flex; align-items:center; justify-content:center;
+          color:white;
         }
+        .db-child-name {
+          font-family:var(--font-serif); font-size:17px; font-weight:600;
+          color:var(--text); line-height:1.2;
+          white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        }
+        .db-child-sub { font-size:11px; color:var(--text-3); margin-top:2px; }
 
         /* Stats strip */
-        .sb-stats {
-          display: flex; padding: 6px 24px 18px;
-          gap: 4px;
-          position: relative; z-index: 1;
+        .db-stats {
+          margin:0 18px; display:flex;
+          background:rgba(196,146,106,.04);
+          border:1px solid var(--border); border-top:none;
+          border-radius:0 0 12px 12px; overflow:hidden;
         }
-        .sb-stat {
-          flex: 1; text-align: center; padding: 12px 6px;
-          border-radius: 10px;
-          transition: background 0.2s; cursor: default;
+        .db-stat { flex:1; text-align:center; padding:12px 4px; }
+        .db-stat:hover { background:var(--surface-hover); }
+        .db-stat-n {
+          font-family:var(--font-serif); font-size:22px; font-weight:300;
+          color:var(--text); line-height:1;
         }
-        .sb-stat:hover { background: rgba(255,255,255,0.05); }
-        .sb-stat-n {
-          font-family: var(--font-serif);
-          font-size: 24px; font-weight: 400; color: #FAF6F0; line-height: 1;
+        .db-stat-l {
+          font-size:8.5px; color:var(--text-3); letter-spacing:1.5px;
+          text-transform:uppercase; margin-top:3px;
         }
-        .sb-stat-l {
-          font-size: 9px; color: rgba(250,246,240,0.3);
-          letter-spacing: 1.5px; text-transform: uppercase; margin-top: 4px;
-        }
-        .sb-stat-divider {
-          width: 1px; background: rgba(255,255,255,0.06);
-          margin: 10px 0; align-self: stretch;
-        }
+        .db-stat-div { width:1px; background:var(--border); margin:8px 0; }
 
         /* Nav */
-        .sb-nav {
-          flex: 1; padding: 8px 16px;
-          position: relative; z-index: 1; overflow-y: auto;
+        .db-nav { flex:1; padding:10px 12px; position:relative; z-index:1; overflow-y:auto; }
+        .db-nav-section {
+          font-size:9px; letter-spacing:3px; text-transform:uppercase;
+          color:var(--text-3); padding:16px 8px 6px; font-weight:500;
         }
-        .sb-nav-label {
-          font-size: 9.5px; letter-spacing: 2.5px; text-transform: uppercase;
-          color: rgba(250,246,240,0.2); padding: 14px 8px 8px;
-          font-weight: 500;
+        .db-nav-item {
+          display:flex; align-items:center; gap:9px; width:100%;
+          padding:9px 10px; border-radius:8px; border:none; background:none;
+          font-family:var(--font-sans); font-size:13px; font-weight:400;
+          color:var(--text-2); cursor:pointer; transition:all .18s;
+          margin-bottom:1px; text-align:left;
         }
-        .sb-nav-item {
-          display: flex; align-items: center; gap: 10px;
-          padding: 10px 12px; border-radius: 10px;
-          cursor: pointer; transition: all 0.18s;
-          margin-bottom: 2px; border: none; background: none;
-          width: 100%; text-align: left;
-          font-family: var(--font-sans); font-size: 13.5px;
-          font-weight: 400; color: rgba(250,246,240,0.45);
+        .db-nav-item:hover { background:var(--surface-hover); color:var(--text); }
+        .db-nav-item.active { background:rgba(196,146,106,.15); color:var(--accent); }
+        .db-nav-item.active .db-nav-icon { background:rgba(196,146,106,.2); }
+        .db-nav-icon {
+          width:26px; height:26px; border-radius:7px; flex-shrink:0;
+          background:rgba(255,255,255,.04); display:flex; align-items:center;
+          justify-content:center; font-size:13px;
         }
-        .sb-nav-item:hover { background: rgba(255,255,255,0.07); color: rgba(250,246,240,0.8); }
-        .sb-nav-item.active { background: rgba(160,100,58,0.25); color: #F5DEC8; font-weight: 500; }
-        .sb-nav-icon {
-          width: 28px; height: 28px; border-radius: 8px;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 14px; flex-shrink: 0;
-          background: rgba(255,255,255,0.06);
-        }
-        .sb-nav-item.active .sb-nav-icon { background: rgba(160,100,58,0.3); }
-        .sb-nav-badge {
-          margin-left: auto; background: var(--accent);
-          color: white; font-size: 10px; font-weight: 600;
-          padding: 2px 7px; border-radius: 10px; min-width: 20px;
-          text-align: center;
+        .db-nav-badge {
+          margin-left:auto; background:var(--accent); color:white;
+          font-size:9.5px; font-weight:600; padding:1px 6px; border-radius:8px;
         }
 
-        /* Sidebar bottom — user */
-        .sb-bottom {
-          padding: 16px; border-top: 1px solid rgba(255,255,255,0.06);
-          position: relative; z-index: 1;
+        /* Bottom */
+        .db-sb-bottom { padding:12px 16px; border-top:1px solid var(--border); position:relative; z-index:1; }
+        .db-user-row {
+          display:flex; align-items:center; gap:9px; padding:8px 10px;
+          border-radius:8px; cursor:pointer; transition:background .2s;
         }
-        .sb-user {
-          display: flex; align-items: center; gap: 10px;
-          padding: 10px 12px; border-radius: 10px;
-          cursor: pointer; transition: background 0.2s;
+        .db-user-row:hover { background:var(--surface-hover); }
+        .db-user-av {
+          width:30px; height:30px; border-radius:50%;
+          background:rgba(196,146,106,.2); border:1px solid rgba(196,146,106,.2);
+          display:flex; align-items:center; justify-content:center;
+          font-size:12px; font-weight:600; color:var(--accent); flex-shrink:0;
         }
-        .sb-user:hover { background: rgba(255,255,255,0.06); }
-        .sb-user-av {
-          width: 32px; height: 32px; border-radius: 50%;
-          background: rgba(160,100,58,0.35);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 13px; font-weight: 600; color: #F5DEC8; flex-shrink: 0;
-        }
-        .sb-user-name {
-          flex: 1; font-size: 12.5px; color: rgba(250,246,240,0.5);
-          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .sb-signout-btn {
-          background: none; border: none; cursor: pointer;
-          color: rgba(250,246,240,0.25); font-size: 15px;
-          padding: 4px; transition: color 0.2s; flex-shrink: 0;
-        }
-        .sb-signout-btn:hover { color: rgba(250,246,240,0.7); }
+        .db-user-name { flex:1; font-size:12px; color:var(--text-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .db-signout { background:none; border:none; cursor:pointer; color:var(--text-3); font-size:14px; padding:3px; transition:color .2s; }
+        .db-signout:hover { color:var(--text-2); }
 
         /* ━━━━━ MAIN ━━━━━ */
-        .main {
-          margin-left: var(--sidebar-w);
-          flex: 1; min-height: 100vh;
-          display: flex; flex-direction: column;
-          background: var(--bg);
+        .db-main { margin-left:var(--sidebar-w); flex:1; min-height:100vh; position:relative; overflow:hidden; }
+
+        /* Ambient background particles */
+        .db-particles { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; margin-left:var(--sidebar-w); }
+        .db-particle {
+          position:absolute; border-radius:50%;
+          animation:db-float linear infinite; opacity:0;
         }
 
-        /* Top bar */
-        .topbar {
-          position: sticky; top: 0; z-index: 50;
-          background: rgba(247,242,236,0.88);
-          backdrop-filter: blur(16px) saturate(180%);
-          border-bottom: 1px solid var(--border);
-          padding: 0 40px; height: 64px;
-          display: flex; align-items: center; justify-content: space-between;
-        }
-        .topbar-left { display: flex; align-items: center; gap: 6px; }
-        .topbar-greeting {
-          font-family: var(--font-serif);
-          font-size: 17px; font-weight: 400; color: var(--text);
-        }
-        .topbar-greeting em { font-style: italic; color: var(--accent); }
-        .topbar-right { display: flex; gap: 8px; align-items: center; }
-
-        .btn-primary {
-          background: var(--dark); color: #FAF6F0;
-          border: none; border-radius: 40px;
-          padding: 9px 20px; font-family: var(--font-sans);
-          font-size: 12px; font-weight: 500; letter-spacing: 1px;
-          text-transform: uppercase; cursor: pointer; transition: all 0.25s;
-          display: flex; align-items: center; gap: 6px; white-space: nowrap;
-        }
-        .btn-primary:hover { background: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(160,100,58,0.3); }
-        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
-
-        .btn-outline {
-          background: white; color: var(--text-2);
-          border: 1px solid var(--border); border-radius: 40px;
-          padding: 9px 20px; font-family: var(--font-sans);
-          font-size: 12px; font-weight: 500; letter-spacing: 1px;
-          text-transform: uppercase; cursor: pointer; transition: all 0.25s;
-          display: flex; align-items: center; gap: 6px; white-space: nowrap;
-        }
-        .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
-
-        /* ━━━━━ CONTENT ━━━━━ */
-        .content {
-          padding: 36px 40px; flex: 1;
-          max-width: 1080px; animation: fadeUp 0.4s ease;
+        /* Ambient glow orbs */
+        .db-glow-orb {
+          position:fixed; border-radius:50%; pointer-events:none; z-index:0;
+          filter:blur(90px); animation:db-glow-pulse ease-in-out infinite;
+          transition:all 1.5s ease;
         }
 
-        /* Section headers */
-        .section-hd {
-          display: flex; align-items: center; justify-content: space-between;
-          margin-bottom: 18px;
+        /* ── Topbar ── */
+        .db-topbar {
+          position:sticky; top:0; z-index:50;
+          background:rgba(12,9,6,.85); backdrop-filter:blur(20px) saturate(180%);
+          border-bottom:1px solid var(--border);
+          padding:0 36px; height:60px;
+          display:flex; align-items:center; justify-content:space-between;
         }
-        .section-label {
-          font-size: 10px; letter-spacing: 3px;
-          text-transform: uppercase; color: var(--accent);
-          font-weight: 600; display: flex; align-items: center; gap: 8px;
+        .db-greeting {
+          font-family:var(--font-serif); font-size:16px; font-weight:300;
+          color:var(--text-2);
         }
-        .section-label::before {
-          content: ''; width: 20px; height: 1.5px;
-          background: var(--accent); border-radius: 2px;
-        }
-        .section-action {
-          font-size: 12px; color: var(--text-3);
-          cursor: pointer; transition: color 0.2s; background: none; border: none;
-          font-family: var(--font-sans);
-        }
-        .section-action:hover { color: var(--accent); }
+        .db-greeting em { font-style:italic; color:var(--accent); }
+        .db-topbar-right { display:flex; gap:8px; align-items:center; }
 
-        /* ━━━━━ HERO BANNER ━━━━━ */
-        .hero-banner {
-          background: var(--gradient);
-          border-radius: var(--radius); padding: 36px 40px;
-          position: relative; overflow: hidden;
-          margin-bottom: 28px; cursor: pointer;
-          border: none; width: 100%; text-align: left;
-          transition: transform 0.3s, box-shadow 0.3s;
+        .db-btn-ghost {
+          background:transparent; color:var(--text-2);
+          border:1px solid var(--border); border-radius:40px;
+          padding:8px 18px; font-family:var(--font-sans);
+          font-size:11.5px; font-weight:400; letter-spacing:.8px;
+          cursor:pointer; transition:all .25s; white-space:nowrap;
+          display:flex; align-items:center; gap:6px;
         }
-        .hero-banner:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
-        .hero-banner:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
-        .hero-orb-1 {
-          position: absolute; top: -60px; right: -60px;
-          width: 220px; height: 220px; border-radius: 50%;
-          background: radial-gradient(circle, rgba(245,222,200,0.08), transparent);
-          pointer-events: none;
-        }
-        .hero-orb-2 {
-          position: absolute; bottom: -80px; left: 30%;
-          width: 280px; height: 280px; border-radius: 50%;
-          background: radial-gradient(circle, rgba(160,100,58,0.1), transparent);
-          pointer-events: none;
-        }
-        .hero-eyebrow {
-          font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
-          color: rgba(245,222,200,0.4); margin-bottom: 10px;
-          position: relative; z-index: 1;
-        }
-        .hero-title {
-          font-family: var(--font-serif); font-size: 30px; font-weight: 400;
-          color: #FAF6F0; line-height: 1.25; position: relative; z-index: 1;
-        }
-        .hero-title em { font-style: italic; color: #F5DEC8; }
-        .hero-sub {
-          font-size: 13px; color: rgba(250,246,240,0.45);
-          margin-top: 8px; position: relative; z-index: 1;
-        }
-        .hero-arrow {
-          position: absolute; right: 36px; top: 50%;
-          transform: translateY(-50%);
-          font-size: 28px; color: rgba(245,222,200,0.25);
-          transition: all 0.3s; z-index: 1;
-        }
-        .hero-banner:hover .hero-arrow { color: rgba(245,222,200,0.7); transform: translateY(-50%) translateX(4px); }
-        .hero-generating {
-          display: flex; align-items: center; gap: 12px;
-          position: relative; z-index: 1;
-        }
-        .hero-spinner {
-          width: 18px; height: 18px; border-radius: 50%;
-          border: 2px solid rgba(245,222,200,0.2);
-          border-top-color: #F5DEC8;
-          animation: spin 0.8s linear infinite;
-        }
+        .db-btn-ghost:hover { border-color:var(--accent); color:var(--accent); }
 
-        /* ━━━━━ GRID ━━━━━ */
-        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
-        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
-        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 28px; }
+        .db-btn-solid {
+          background:var(--accent); color:#0C0906;
+          border:none; border-radius:40px;
+          padding:8px 20px; font-family:var(--font-sans);
+          font-size:11.5px; font-weight:500; letter-spacing:1px;
+          text-transform:uppercase; cursor:pointer; transition:all .25s;
+          display:flex; align-items:center; gap:6px; white-space:nowrap;
+        }
+        .db-btn-solid:hover { background:var(--gold); transform:translateY(-1px); box-shadow:0 4px 20px rgba(196,146,106,.35); }
+        .db-btn-solid:disabled { opacity:.4; cursor:not-allowed; transform:none; box-shadow:none; }
 
-        /* ━━━━━ STAT CARDS ━━━━━ */
-        .stat-card {
-          background: var(--surface); border-radius: var(--radius-sm);
-          padding: 20px; border: 1px solid var(--border);
-          transition: box-shadow 0.25s;
-        }
-        .stat-card:hover { box-shadow: var(--shadow); }
-        .stat-icon { font-size: 20px; margin-bottom: 12px; }
-        .stat-num {
-          font-family: var(--font-serif); font-size: 36px; font-weight: 400;
-          color: var(--text); line-height: 1; margin-bottom: 4px;
-        }
-        .stat-lbl { font-size: 11px; color: var(--text-3); letter-spacing: 1px; text-transform: uppercase; }
+        /* ── Content ── */
+        .db-content { padding:36px 40px; max-width:1060px; position:relative; z-index:1; }
 
-        /* ━━━━━ ACTION CARDS ━━━━━ */
-        .action-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 28px; }
-        .action-card {
-          background: var(--surface); border-radius: var(--radius-sm);
-          padding: 22px; cursor: pointer;
-          border: 1.5px solid var(--border);
-          transition: all 0.22s; display: flex; flex-direction: column;
-          gap: 10px; position: relative; overflow: hidden;
+        /* ── Section labels ── */
+        .db-section-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+        .db-section-label {
+          font-size:9.5px; letter-spacing:3.5px; text-transform:uppercase;
+          color:var(--accent); font-weight:500;
+          display:flex; align-items:center; gap:10px;
         }
-        .action-card:hover { border-color: var(--accent); box-shadow: 0 6px 24px rgba(160,100,58,0.1); transform: translateY(-2px); }
-        .action-card-shine {
-          position: absolute; top: 0; left: -60%;
-          width: 40%; height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-          transform: skewX(-20deg); opacity: 0;
-          transition: opacity 0.3s;
-        }
-        .action-card:hover .action-card-shine { opacity: 1; animation: shimmer 0.6s ease; }
-        .action-card-icon {
-          width: 40px; height: 40px; border-radius: 10px;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 18px;
-        }
-        .action-card-title {
-          font-family: var(--font-serif); font-size: 16px; font-weight: 600; color: var(--text);
-        }
-        .action-card-desc { font-size: 12px; color: var(--text-3); line-height: 1.5; }
+        .db-section-label::before { content:''; width:18px; height:1px; background:var(--accent); border-radius:2px; }
+        .db-section-link { font-size:11.5px; color:var(--text-3); cursor:pointer; background:none; border:none; font-family:var(--font-sans); transition:color .2s; }
+        .db-section-link:hover { color:var(--accent); }
 
-        /* ━━━━━ MEMORY ITEMS ━━━━━ */
-        .memory-feed { display: flex; flex-direction: column; gap: 12px; }
-        .memory-item {
-          background: var(--surface); border-radius: var(--radius-sm);
-          border: 1px solid var(--border); overflow: hidden;
-          display: flex; transition: all 0.22s;
+        /* ── Hero Story Card ── */
+        .db-hero {
+          position:relative; border-radius:var(--radius); overflow:hidden;
+          padding:36px 44px; margin-bottom:28px;
+          background:linear-gradient(135deg, #1A0F06 0%, #2A1A0C 45%, #1E1408 100%);
+          border:1px solid rgba(196,146,106,.12);
+          cursor:pointer; transition:all .3s; width:100%; text-align:left;
         }
-        .memory-item:hover { border-color: var(--border-hover); box-shadow: var(--shadow); }
-        .memory-stripe {
-          width: 4px; flex-shrink: 0;
-          background: linear-gradient(180deg, #F5DEC8, #E8D0E0, #C8DCE0);
+        .db-hero:hover { border-color:rgba(196,146,106,.3); transform:translateY(-2px); box-shadow:0 16px 60px rgba(0,0,0,.5); }
+        .db-hero:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+        .db-hero-orb1 {
+          position:absolute; top:-60px; right:-60px;
+          width:240px; height:240px; border-radius:50%;
+          background:radial-gradient(circle,rgba(196,146,106,.1),transparent);
+          pointer-events:none;
         }
-        .memory-body { flex: 1; padding: 20px 22px; min-width: 0; }
-        .memory-header {
-          display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+        .db-hero-orb2 {
+          position:absolute; bottom:-80px; left:35%;
+          width:300px; height:300px; border-radius:50%;
+          background:radial-gradient(circle,rgba(196,146,106,.06),transparent);
+          pointer-events:none;
         }
-        .memory-author-pill {
-          font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
-          color: var(--accent); font-weight: 600;
-          background: var(--accent-light); padding: 3px 10px;
-          border-radius: 20px; white-space: nowrap;
+        .db-hero-eyebrow {
+          font-size:9.5px; letter-spacing:3.5px; text-transform:uppercase;
+          color:rgba(196,146,106,.45); margin-bottom:10px; position:relative; z-index:1;
         }
-        .memory-date-txt { font-size: 11.5px; color: var(--text-3); }
-        .memory-text {
-          font-family: var(--font-serif); font-size: 17px; font-style: italic;
-          color: var(--text); line-height: 1.75;
+        .db-hero-title {
+          font-family:var(--font-serif); font-size:clamp(22px,2.8vw,32px); font-weight:300;
+          color:var(--text); line-height:1.3; position:relative; z-index:1;
         }
-        .memory-thumb {
-          width: 96px; flex-shrink: 0; object-fit: cover;
+        .db-hero-title em { font-style:italic; color:var(--accent); }
+        .db-hero-sub {
+          font-size:12.5px; color:var(--text-3); margin-top:8px;
+          position:relative; z-index:1;
+        }
+        .db-hero-arrow {
+          position:absolute; right:36px; top:50%; transform:translateY(-50%);
+          font-size:26px; color:rgba(196,146,106,.2);
+          transition:all .3s; z-index:1;
+        }
+        .db-hero:hover .db-hero-arrow { color:rgba(196,146,106,.7); transform:translateY(-50%) translateX(5px); }
+        .db-hero-spinner {
+          width:16px; height:16px; border-radius:50%;
+          border:2px solid rgba(196,146,106,.2); border-top-color:var(--accent);
+          animation:db-spin .8s linear infinite;
         }
 
-        /* ━━━━━ EMPTY STATE ━━━━━ */
-        .empty {
-          text-align: center; padding: 56px 32px;
-          background: var(--surface); border-radius: var(--radius);
-          border: 1.5px dashed rgba(190,170,150,0.25);
+        /* ── Stat cards ── */
+        .db-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:28px; }
+        .db-stat-card {
+          background:var(--surface); border:1px solid var(--border);
+          border-radius:var(--radius-sm); padding:20px 18px;
+          transition:all .25s; position:relative; overflow:hidden;
         }
-        .empty-icon { font-size: 44px; margin-bottom: 14px; opacity: 0.65; }
-        .empty-title {
-          font-family: var(--font-serif); font-size: 22px; font-weight: 400;
-          color: var(--text); margin-bottom: 8px;
+        .db-stat-card:hover { border-color:var(--border-h); background:var(--surface-hover); }
+        .db-stat-card-icon { font-size:18px; margin-bottom:10px; opacity:.7; }
+        .db-stat-card-num {
+          font-family:var(--font-serif); font-size:34px; font-weight:300;
+          color:var(--text); line-height:1; margin-bottom:4px;
         }
-        .empty-desc { font-size: 13.5px; color: var(--text-3); line-height: 1.65; }
+        .db-stat-card-lbl { font-size:10px; color:var(--text-3); letter-spacing:1.5px; text-transform:uppercase; }
 
-        /* ━━━━━ SETUP SCREEN ━━━━━ */
-        .setup-wrap {
-          display: flex; align-items: center; justify-content: center;
-          flex: 1; padding: 48px;
+        /* ── Action cards ── */
+        .db-actions-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:28px; }
+        .db-action-card {
+          background:var(--surface); border:1px solid var(--border);
+          border-radius:var(--radius-sm); padding:22px 20px;
+          cursor:pointer; transition:all .25s;
+          display:flex; flex-direction:column; gap:10px;
+          position:relative; overflow:hidden;
         }
-        .setup-card {
-          background: var(--surface); border-radius: 24px;
-          padding: 64px 56px; text-align: center;
-          max-width: 460px; width: 100%;
-          box-shadow: 0 20px 60px rgba(36,26,18,0.07);
-          border: 1px solid var(--border);
-          animation: fadeUp 0.5s ease;
+        .db-action-card::after {
+          content:''; position:absolute; inset:0;
+          background:linear-gradient(135deg, rgba(196,146,106,.06), transparent);
+          opacity:0; transition:opacity .3s;
         }
-        .setup-emoji { font-size: 56px; margin-bottom: 20px; }
-        .setup-title {
-          font-family: var(--font-serif); font-size: 34px; font-weight: 400;
-          color: var(--text); margin-bottom: 12px;
+        .db-action-card:hover { border-color:rgba(196,146,106,.25); transform:translateY(-3px); box-shadow:0 8px 32px rgba(0,0,0,.4); }
+        .db-action-card:hover::after { opacity:1; }
+        .db-action-shine {
+          position:absolute; top:0; left:-80%; width:45%; height:100%;
+          background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent);
+          transform:skewX(-15deg);
         }
-        .setup-title em { font-style: italic; color: var(--accent); }
-        .setup-desc { font-size: 14.5px; color: var(--text-2); margin-bottom: 32px; line-height: 1.7; }
+        .db-action-card:hover .db-action-shine { animation:db-shimmer .6s ease; }
+        .db-action-icon {
+          width:38px; height:38px; border-radius:9px;
+          display:flex; align-items:center; justify-content:center; font-size:17px;
+        }
+        .db-action-title { font-family:var(--font-serif); font-size:15.5px; font-weight:600; color:var(--text); }
+        .db-action-desc { font-size:12px; color:var(--text-3); line-height:1.55; }
 
-        /* ━━━━━ MODAL ━━━━━ */
-        .overlay {
-          position: fixed; inset: 0;
-          background: rgba(32,22,16,0.6); backdrop-filter: blur(12px);
-          display: flex; align-items: center; justify-content: center;
-          z-index: 300; padding: 24px;
-          animation: fadeIn 0.2s ease;
+        /* ── Memory feed ── */
+        .db-memory-feed { display:flex; flex-direction:column; gap:10px; }
+        .db-memory-item {
+          display:flex; background:var(--surface); border:1px solid var(--border);
+          border-radius:var(--radius-sm); overflow:hidden; transition:all .22s;
         }
-        .modal {
-          background: var(--bg); border-radius: 22px;
-          padding: 44px; width: 100%; max-width: 500px;
-          box-shadow: 0 32px 80px rgba(0,0,0,0.22);
-          max-height: 92vh; overflow-y: auto;
-          animation: fadeUp 0.28s ease;
+        .db-memory-item:hover { border-color:var(--border-h); box-shadow:0 4px 20px rgba(0,0,0,.3); transform:translateX(3px); }
+        .db-memory-stripe {
+          width:3px; flex-shrink:0;
+          background:linear-gradient(180deg, rgba(196,146,106,.8), rgba(196,146,106,.2), rgba(196,146,106,.5));
         }
-        .modal-bar {
-          height: 3px; border-radius: 3px 3px 0 0;
-          background: linear-gradient(90deg, #F5DEC8, #E8D0E0, #C8DCE0);
-          margin: -44px -44px 36px;
+        .db-memory-body { flex:1; padding:16px 20px; min-width:0; }
+        .db-memory-meta { display:flex; align-items:center; gap:10px; margin-bottom:7px; }
+        .db-memory-author {
+          font-size:9px; letter-spacing:2px; text-transform:uppercase;
+          color:var(--accent); font-weight:600;
+          background:rgba(196,146,106,.1); padding:3px 9px; border-radius:20px;
         }
-        .modal-title {
-          font-family: var(--font-serif); font-size: 30px; font-weight: 400;
-          color: var(--text); margin-bottom: 6px;
+        .db-memory-date { font-size:11px; color:var(--text-3); }
+        .db-memory-text {
+          font-family:var(--font-serif); font-size:16px; font-style:italic;
+          color:var(--text-2); line-height:1.7;
         }
-        .modal-title em { font-style: italic; color: var(--accent); }
-        .modal-desc { font-size: 13.5px; color: var(--text-2); margin-bottom: 28px; line-height: 1.65; }
-        .f-label {
-          display: block; font-size: 10px; letter-spacing: 2px;
-          text-transform: uppercase; color: var(--text-2);
-          margin-bottom: 7px; font-weight: 500;
-        }
-        .f-input {
-          width: 100%; padding: 13px 16px;
-          background: white; border: 1px solid rgba(190,170,150,0.35);
-          border-radius: 10px; font-family: var(--font-sans);
-          font-size: 14.5px; color: var(--text); outline: none;
-          transition: all 0.25s; margin-bottom: 18px;
-        }
-        .f-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(160,100,58,0.1); }
-        .f-textarea {
-          width: 100%; padding: 13px 16px;
-          background: white; border: 1px solid rgba(190,170,150,0.35);
-          border-radius: 10px; font-family: var(--font-serif);
-          font-size: 17px; font-style: italic; color: var(--text); outline: none;
-          resize: none; min-height: 130px; line-height: 1.7;
-          transition: all 0.25s; margin-bottom: 18px;
-        }
-        .f-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(160,100,58,0.1); }
-        .f-textarea::placeholder { color: #C4A990; font-style: italic; }
-        .f-upload {
-          display: flex; flex-direction: column; align-items: center;
-          justify-content: center; gap: 8px; padding: 28px;
-          border: 1.5px dashed rgba(190,170,150,0.45); border-radius: 10px;
-          background: white; cursor: pointer;
-          color: var(--text-3); font-size: 13px;
-          transition: all 0.25s; margin-bottom: 18px;
-        }
-        .f-upload:hover { border-color: var(--accent); color: var(--accent); background: rgba(160,100,58,0.03); }
-        .modal-actions { display: flex; gap: 10px; }
-        .btn-modal-save {
-          flex: 1; padding: 13px; background: var(--dark); color: #FAF6F0;
-          border: none; border-radius: 10px; font-family: var(--font-sans);
-          font-size: 12px; font-weight: 500; letter-spacing: 1.5px;
-          text-transform: uppercase; cursor: pointer; transition: all 0.25s;
-        }
-        .btn-modal-save:hover { background: var(--accent); }
-        .btn-modal-save:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-modal-cancel {
-          padding: 13px 22px; background: white; color: var(--text-2);
-          border: 1px solid rgba(190,170,150,0.3); border-radius: 10px;
-          font-family: var(--font-sans); font-size: 12px;
-          cursor: pointer; transition: all 0.25s;
-        }
-        .btn-modal-cancel:hover { border-color: var(--accent); color: var(--accent); }
+        .db-memory-thumb { width:88px; flex-shrink:0; object-fit:cover; }
 
-        /* Cartoon modal */
-        .cartoon-spinner-ring {
-          width: 48px; height: 48px; border-radius: 50%;
-          border: 3px solid rgba(190,170,150,0.25);
-          border-top-color: var(--accent);
-          animation: spin 1s linear infinite;
-          margin: 0 auto 14px;
+        /* ── Empty state ── */
+        .db-empty {
+          text-align:center; padding:52px 32px;
+          background:var(--surface); border-radius:var(--radius);
+          border:1px dashed rgba(196,146,106,.12);
         }
-        .cartoon-before-after {
-          display: flex; align-items: center; justify-content: center;
-          gap: 20px; margin: 20px 0 24px;
+        .db-empty-icon { font-size:40px; margin-bottom:14px; opacity:.5; }
+        .db-empty-title { font-family:var(--font-serif); font-size:22px; font-weight:300; color:var(--text); margin-bottom:8px; }
+        .db-empty-desc { font-size:13px; color:var(--text-3); line-height:1.65; }
+
+        /* ── Setup screen ── */
+        .db-setup-wrap { display:flex; align-items:center; justify-content:center; flex:1; min-height:calc(100vh - 60px); padding:48px; }
+        .db-setup-card {
+          background:rgba(255,255,255,.03); border:1px solid var(--border);
+          border-radius:24px; padding:64px 52px; text-align:center;
+          max-width:440px; width:100%;
+          box-shadow:0 40px 80px rgba(0,0,0,.5);
+          animation:db-card-in .6s ease both;
         }
-        .cartoon-before-after img {
-          width: 110px; height: 110px; object-fit: cover;
-          border-radius: 50%; border: 3px solid rgba(190,170,150,0.25);
+        .db-setup-emoji { font-size:52px; margin-bottom:20px; }
+        .db-setup-title { font-family:var(--font-serif); font-size:32px; font-weight:300; color:var(--text); margin-bottom:12px; }
+        .db-setup-title em { font-style:italic; color:var(--accent); }
+        .db-setup-desc { font-size:14px; color:var(--text-2); margin-bottom:32px; line-height:1.75; }
+
+        /* ── Staggered animations for home view ── */
+        .db-stagger > * { animation:db-card-in .5s ease both; }
+        .db-stagger > *:nth-child(1) { animation-delay:.05s; }
+        .db-stagger > *:nth-child(2) { animation-delay:.12s; }
+        .db-stagger > *:nth-child(3) { animation-delay:.19s; }
+        .db-stagger > *:nth-child(4) { animation-delay:.26s; }
+        .db-stagger > *:nth-child(5) { animation-delay:.33s; }
+
+        /* ── Modal ── */
+        .db-overlay {
+          position:fixed; inset:0; background:rgba(0,0,0,.75);
+          backdrop-filter:blur(16px); display:flex;
+          align-items:center; justify-content:center;
+          z-index:300; padding:24px;
+          animation:db-fadein .2s ease;
+        }
+        .db-modal {
+          background:#12100D; border:1px solid rgba(196,146,106,.12);
+          border-radius:20px; padding:40px; width:100%; max-width:480px;
+          box-shadow:0 40px 80px rgba(0,0,0,.6);
+          max-height:92vh; overflow-y:auto;
+          animation:db-card-in .3s ease both;
+        }
+        .db-modal-bar {
+          height:2px; border-radius:2px 2px 0 0;
+          background:linear-gradient(90deg,var(--accent),rgba(196,146,106,.3),var(--accent));
+          margin:-40px -40px 32px;
+        }
+        .db-modal-title { font-family:var(--font-serif); font-size:28px; font-weight:300; color:var(--text); margin-bottom:6px; }
+        .db-modal-title em { font-style:italic; color:var(--accent); }
+        .db-modal-desc { font-size:13px; color:var(--text-2); margin-bottom:26px; line-height:1.65; }
+        .db-f-label { display:block; font-size:9.5px; letter-spacing:2.5px; text-transform:uppercase; color:var(--text-3); margin-bottom:7px; }
+        .db-f-input {
+          width:100%; padding:12px 15px;
+          background:rgba(255,255,255,.05); border:1px solid rgba(196,146,106,.15);
+          border-radius:9px; font-family:var(--font-sans);
+          font-size:14px; color:var(--text); outline:none;
+          transition:all .25s; margin-bottom:16px;
+        }
+        .db-f-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(196,146,106,.1); }
+        .db-f-textarea {
+          width:100%; padding:12px 15px;
+          background:rgba(255,255,255,.05); border:1px solid rgba(196,146,106,.15);
+          border-radius:9px; font-family:var(--font-serif);
+          font-size:16.5px; font-style:italic; color:var(--text); outline:none;
+          resize:none; min-height:125px; line-height:1.7;
+          transition:all .25s; margin-bottom:16px;
+        }
+        .db-f-textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(196,146,106,.1); }
+        .db-f-textarea::placeholder { color:rgba(196,146,106,.25); }
+        .db-f-upload {
+          display:flex; flex-direction:column; align-items:center;
+          justify-content:center; gap:8px; padding:26px;
+          border:1.5px dashed rgba(196,146,106,.2); border-radius:9px;
+          background:rgba(255,255,255,.02); cursor:pointer;
+          color:var(--text-3); font-size:13px;
+          transition:all .25s; margin-bottom:16px;
+        }
+        .db-f-upload:hover { border-color:rgba(196,146,106,.5); color:var(--accent); background:rgba(196,146,106,.04); }
+        .db-modal-btns { display:flex; gap:10px; }
+        .db-btn-modal-save {
+          flex:1; padding:12px; background:var(--accent); color:#0C0906;
+          border:none; border-radius:9px; font-family:var(--font-sans);
+          font-size:11.5px; font-weight:500; letter-spacing:1.5px;
+          text-transform:uppercase; cursor:pointer; transition:all .25s;
+        }
+        .db-btn-modal-save:hover { background:var(--gold); }
+        .db-btn-modal-save:disabled { opacity:.4; cursor:not-allowed; }
+        .db-btn-modal-cancel {
+          padding:12px 20px; background:transparent; color:var(--text-2);
+          border:1px solid rgba(196,146,106,.15); border-radius:9px;
+          font-family:var(--font-sans); font-size:12px; cursor:pointer; transition:all .25s;
+        }
+        .db-btn-modal-cancel:hover { border-color:var(--accent); color:var(--accent); }
+
+        .db-cartoon-spinner {
+          width:44px; height:44px; border-radius:50%;
+          border:2.5px solid rgba(196,146,106,.15); border-top-color:var(--accent);
+          animation:db-spin 1s linear infinite; margin:0 auto 14px;
+        }
+        .db-invite-code {
+          background:rgba(255,255,255,.04); border-radius:9px; padding:14px;
+          margin-bottom:14px; font-size:12px; color:var(--text-2);
+          word-break:break-all; font-family:monospace; line-height:1.5;
+          border:1px solid rgba(196,146,106,.12);
         }
 
-        /* Story modal */
-        .story-modal { max-width: 660px; }
-        .story-header { text-align: center; margin-bottom: 36px; padding-bottom: 28px; border-bottom: 1px solid var(--border); }
-        .story-eyebrow { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
-        .story-book-title { font-family: var(--font-serif); font-size: 38px; font-weight: 400; color: var(--text); }
-        .story-meta { font-size: 12.5px; color: var(--text-3); margin-top: 8px; }
-        .chapter-block { margin-bottom: 44px; }
-        .chapter-num { font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
-        .chapter-title { font-family: var(--font-serif); font-size: 24px; font-weight: 600; font-style: italic; color: var(--text); margin-bottom: 18px; }
-        .chapter-body { font-family: var(--font-serif); font-size: 17px; font-style: italic; color: var(--text-2); line-height: 1.9; white-space: pre-line; }
-        .chapter-sep { text-align: center; color: var(--text-3); font-size: 16px; letter-spacing: 8px; margin: 36px 0; }
-
-        /* Invite */
-        .invite-code {
-          background: white; border-radius: 10px; padding: 14px 16px;
-          margin-bottom: 14px; font-size: 12.5px; color: var(--text-2);
-          word-break: break-all; font-family: monospace; line-height: 1.5;
-          border: 1px solid var(--border);
+        @media (max-width:900px) {
+          :root { --sidebar-w:230px; }
+          .db-content { padding:24px; }
+          .db-topbar { padding:0 24px; }
+          .db-stats-grid { grid-template-columns:repeat(2,1fr); }
+          .db-actions-grid { grid-template-columns:repeat(2,1fr); }
         }
-
-        /* Responsive */
-        @media (max-width: 960px) {
-          :root { --sidebar-w: 230px; }
-          .content { padding: 24px 28px; }
-          .topbar { padding: 0 28px; }
-          .grid-4 { grid-template-columns: repeat(2,1fr); }
-          .action-grid { grid-template-columns: repeat(2,1fr); }
-        }
-        @media (max-width: 700px) {
-          .sidebar { display: none; }
-          .main { margin-left: 0; }
-          .grid-4 { grid-template-columns: repeat(2,1fr); }
-          .action-grid { grid-template-columns: 1fr; }
-          .grid-2 { grid-template-columns: 1fr; }
+        @media (max-width:680px) {
+          .db-sidebar { display:none; }
+          .db-main { margin-left:0; }
+          .db-particles { margin-left:0; }
+          .db-stats-grid { grid-template-columns:repeat(2,1fr); }
+          .db-actions-grid { grid-template-columns:1fr; }
         }
       `}</style>
 
-      <div className="layout">
+      <div className="db-layout">
+
+        {/* ━━━━━ BACKGROUND PARTICLES ━━━━━ */}
+        <div className="db-particles">
+          {Array.from({ length: 20 }, (_, i) => (
+            <div key={i} className="db-particle" style={{
+              left: `${4 + (i * 41) % 93}%`,
+              width: `${2 + (i * 2) % 3}px`,
+              height: `${2 + (i * 2) % 3}px`,
+              background: `rgba(196,146,106,${0.12 + (i % 5) * 0.06})`,
+              animationDuration: `${9 + (i * 2.4) % 13}s`,
+              animationDelay: `${(i * 1.9) % 11}s`,
+            }} />
+          ))}
+        </div>
+
+        {/* Ambient glow orbs */}
+        <div className="db-glow-orb" style={{ width:500, height:500, background:'radial-gradient(circle, rgba(196,146,106,0.06), transparent)', top:'-100px', right:'0px', animationDuration:'8s' }} />
+        <div className="db-glow-orb" style={{ width:400, height:400, background:'radial-gradient(circle, rgba(196,146,106,0.04), transparent)', bottom:'-80px', right:'20%', animationDuration:'11s', animationDelay:'3s' }} />
 
         {/* ━━━━━ SIDEBAR ━━━━━ */}
-        <aside className="sidebar">
-          <div className="sidebar-glow" />
-          <div className="sidebar-glow-2" />
+        <aside className="db-sidebar">
+          <div className="db-sb-glow1" /><div className="db-sb-glow2" />
 
           {/* Brand */}
-          <div className="sb-brand">
-            <div className="sb-logo">
-              <div className="sb-logo-icon">📖</div>
+          <div className="db-brand">
+            <div className="db-logo">
+              <div className="db-logo-icon">📖</div>
               Hemsaga
             </div>
-            <div className="sb-tagline">Family Stories Forever</div>
+            <div className="db-tagline">Family Stories Forever</div>
           </div>
 
-          {/* Child profile */}
           {child ? (
             <>
-              <div className="sb-profile">
-                <div className="sb-profile-inner" onClick={() => setShowCartoonModal(true)} title="Update cartoon avatar">
-                  <div className="sb-avatar">
-                    {childCartoonUrl
-                      ? <img src={childCartoonUrl} alt={child.name} />
-                      : <span>🌟</span>}
-                    <div className="sb-avatar-badge">✎</div>
+              {/* Profile */}
+              <div className="db-profile" style={{ paddingBottom: '0', marginBottom: '0' }}>
+                <div className="db-profile-btn" onClick={() => setShowCartoonModal(true)}>
+                  <div className="db-avatar-wrap">
+                    <div className="db-avatar">
+                      {childCartoonUrl ? <img src={childCartoonUrl} alt={child.name} /> : <span>🌟</span>}
+                    </div>
+                    <div className="db-avatar-ring" />
+                    <div className="db-avatar-edit">✎</div>
                   </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div className="sb-child-name">{child.name}</div>
-                    <div className="sb-child-age">{getAge(child.birthday)}</div>
+                  <div style={{ minWidth:0 }}>
+                    <div className="db-child-name">{child.name}</div>
+                    <div className="db-child-sub">{getAge(child.birthday)}</div>
                   </div>
                 </div>
               </div>
 
-              {/* Stats */}
-              <div className="sb-stats">
-                <div className="sb-stat">
-                  <div className="sb-stat-n">{memories.length}</div>
-                  <div className="sb-stat-l">Memories</div>
+              {/* Stats strip */}
+              <div className="db-stats" style={{ margin: '0 18px 14px' }}>
+                <div className="db-stat">
+                  <div className="db-stat-n">{memories.length}</div>
+                  <div className="db-stat-l">Memories</div>
                 </div>
-                <div className="sb-stat-divider" />
-                <div className="sb-stat">
-                  <div className="sb-stat-n">{Math.ceil(memories.length / 5) || 0}</div>
-                  <div className="sb-stat-l">Chapters</div>
+                <div className="db-stat-div" />
+                <div className="db-stat">
+                  <div className="db-stat-n">{Math.ceil(memories.length / 5) || 0}</div>
+                  <div className="db-stat-l">Chapters</div>
                 </div>
-                <div className="sb-stat-divider" />
-                <div className="sb-stat">
-                  <div className="sb-stat-n">{getDaysOld(child.birthday)}</div>
-                  <div className="sb-stat-l">Days old</div>
+                <div className="db-stat-div" />
+                <div className="db-stat">
+                  <div className="db-stat-n">{getDaysOld(child.birthday)}</div>
+                  <div className="db-stat-l">Days</div>
                 </div>
               </div>
 
               {/* Nav */}
-              <nav className="sb-nav">
-                <div className="sb-nav-label">Sections</div>
+              <nav className="db-nav">
+                <div className="db-nav-section">Views</div>
                 {[
-                  { id: 'home', icon: '⌂', label: 'Dashboard' },
-                  { id: 'memories', icon: '🌸', label: 'Memories', badge: memories.length > 0 ? memories.length : null },
-                  { id: 'story', icon: '📖', label: 'Our Story' },
+                  { id:'home', icon:'⌂', label:'Dashboard' },
+                  { id:'memories', icon:'🌸', label:'Memories', badge: memories.length || null },
+                  { id:'story', icon:'📖', label:'Our Story' },
                 ].map(n => (
-                  <button key={n.id} className={`sb-nav-item ${activeView === n.id ? 'active' : ''}`} onClick={() => setActiveView(n.id)}>
-                    <span className="sb-nav-icon">{n.icon}</span>
+                  <button key={n.id} className={`db-nav-item ${activeView === n.id ? 'active' : ''}`} onClick={() => setActiveView(n.id)}>
+                    <span className="db-nav-icon">{n.icon}</span>
                     {n.label}
-                    {n.badge && <span className="sb-nav-badge">{n.badge}</span>}
+                    {n.badge && <span className="db-nav-badge">{n.badge}</span>}
                   </button>
                 ))}
-                <div className="sb-nav-label" style={{ marginTop: '8px' }}>Actions</div>
-                <button className="sb-nav-item" onClick={() => setShowAddMemory(true)}>
-                  <span className="sb-nav-icon">✦</span> Add Memory
+
+                <div className="db-nav-section" style={{ marginTop:'8px' }}>Actions</div>
+                <button className="db-nav-item" onClick={() => setShowAddMemory(true)}>
+                  <span className="db-nav-icon">✦</span> Add Memory
                 </button>
-                <button className="sb-nav-item" onClick={() => { setShowInviteModal(true); setInviteLink(''); }}>
-                  <span className="sb-nav-icon">👨‍👩‍👧</span> Invite Family
+                <button className="db-nav-item" onClick={() => { setShowInviteModal(true); setInviteLink(''); }}>
+                  <span className="db-nav-icon">👨‍👩‍👧</span> Invite Family
                 </button>
-                <button className="sb-nav-item" onClick={() => setShowCartoonModal(true)}>
-                  <span className="sb-nav-icon">🎨</span> Cartoon Avatar
+                <button className="db-nav-item" onClick={() => setShowCartoonModal(true)}>
+                  <span className="db-nav-icon">🎨</span> Cartoon Avatar
                 </button>
               </nav>
             </>
           ) : (
-            <div className="sb-nav">
-              <p style={{ fontSize: '12.5px', color: 'rgba(250,246,240,0.3)', lineHeight: '1.7', padding: '8px' }}>
+            <div className="db-nav">
+              <p style={{ fontSize:'12px', color:'var(--text-3)', lineHeight:'1.7', padding:'8px' }}>
                 Add your child's profile to begin their story.
               </p>
             </div>
           )}
 
-          {/* Bottom user */}
-          <div className="sb-bottom">
-            <div className="sb-user">
-              <div className="sb-user-av">{userName[0].toUpperCase()}</div>
-              <span className="sb-user-name">{userName}</span>
-              <button className="sb-signout-btn" title="Sign out"
-                onClick={async () => { await supabase.auth.signOut(); router.push('/auth'); }}>
-                ↪
-              </button>
+          <div className="db-sb-bottom">
+            <div className="db-user-row">
+              <div className="db-user-av">{userName[0].toUpperCase()}</div>
+              <span className="db-user-name">{userName}</span>
+              <button className="db-signout" onClick={async () => { await supabase.auth.signOut(); router.push('/auth'); }}>↪</button>
             </div>
           </div>
         </aside>
 
         {/* ━━━━━ MAIN ━━━━━ */}
-        <div className="main">
+        <div className="db-main">
+
           {/* Topbar */}
-          <header className="topbar">
-            <div className="topbar-left">
-              <span className="topbar-greeting">
-                {child
-                  ? <>{getGreeting()}&nbsp;— <em>{child.name}'s story</em> awaits</>
-                  : <>Welcome to <em>Hemsaga</em></>}
-              </span>
-            </div>
-            <div className="topbar-right">
+          <header className="db-topbar">
+            <span className="db-greeting">
+              {child
+                ? <>{getGreeting()} — <em>{child.name}'s story</em> awaits</>
+                : <>Welcome to <em>Hemsaga</em></>}
+            </span>
+            <div className="db-topbar-right">
               {child && (
                 <>
-                  <button className="btn-outline" onClick={() => setShowAddMemory(true)}>+ Memory</button>
-                  <button className="btn-primary" onClick={() => generateStory(false)} disabled={generating || memories.length === 0}>
+                  <button className="db-btn-ghost" onClick={() => setShowAddMemory(true)}>+ Memory</button>
+                  <button className="db-btn-solid" onClick={() => generateStory(false)} disabled={generating || memories.length === 0}>
                     {generating
-                      ? <><div style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'spin 0.8s linear infinite' }} />Writing…</>
+                      ? <><div className="db-hero-spinner" style={{ width:13, height:13, borderWidth:'1.5px' }} />Writing…</>
                       : <>✦ Generate Chapter</>}
                   </button>
                 </>
@@ -864,12 +796,12 @@ export default function Dashboard() {
 
           {/* No child */}
           {!child && (
-            <div className="setup-wrap">
-              <div className="setup-card">
-                <div className="setup-emoji">🌸</div>
-                <h1 className="setup-title">Add your <em>child's</em> profile</h1>
-                <p className="setup-desc">Their story starts the moment you add them here. Every memory you log becomes a chapter they'll treasure for life.</p>
-                <button className="btn-primary" style={{ margin: '0 auto', fontSize: '13px', padding: '12px 32px' }} onClick={() => setShowAddChild(true)}>
+            <div className="db-setup-wrap">
+              <div className="db-setup-card">
+                <div className="db-setup-emoji">🌸</div>
+                <h1 className="db-setup-title">Add your <em>child's</em> profile</h1>
+                <p className="db-setup-desc">Their story starts the moment you add them here. Every memory you log becomes a chapter they'll treasure for life.</p>
+                <button className="db-btn-solid" style={{ margin:'0 auto', padding:'12px 32px' }} onClick={() => setShowAddChild(true)}>
                   Begin the Story →
                 </button>
               </div>
@@ -878,97 +810,91 @@ export default function Dashboard() {
 
           {/* ━━━ HOME VIEW ━━━ */}
           {child && activeView === 'home' && (
-            <div className="content">
+            <div className="db-content db-stagger">
 
-              {/* AI Story banner */}
-              <button className="hero-banner" onClick={() => memories.length > 0 ? generateStory(false) : setShowAddMemory(true)} disabled={generating}>
-                <div className="hero-orb-1" /><div className="hero-orb-2" />
-                <div className="hero-eyebrow">AI Story Engine · Hemsaga</div>
+              {/* Hero story button */}
+              <button className="db-hero" onClick={() => memories.length > 0 ? generateStory(false) : setShowAddMemory(true)} disabled={generating}>
+                <div className="db-hero-orb1" /><div className="db-hero-orb2" />
+                <div className="db-hero-eyebrow">AI Story Engine · Hemsaga</div>
                 {generating
-                  ? <div className="hero-generating">
-                      <div className="hero-spinner" />
-                      <div className="hero-title">Writing {child.name}'s next chapter…</div>
+                  ? <div style={{ display:'flex', alignItems:'center', gap:12, position:'relative', zIndex:1 }}>
+                      <div className="db-hero-spinner" />
+                      <div className="db-hero-title">Writing {child.name}'s next chapter…</div>
                     </div>
                   : <>
-                      <div className="hero-title">
+                      <div className="db-hero-title">
                         {memories.length === 0
-                          ? <>Start by adding <em>the first memory</em></>
+                          ? <>Start with <em>the first memory</em></>
                           : <>Continue <em>{child.name}'s</em> story</>}
                       </div>
-                      <div className="hero-sub">
+                      <div className="db-hero-sub">
                         {memories.length === 0
                           ? 'Every great story begins with a single moment'
                           : `${memories.length} memories ready · Generate the next chapter`}
                       </div>
-                      <div className="hero-arrow">→</div>
+                      <div className="db-hero-arrow">→</div>
                     </>}
               </button>
 
               {/* Stats */}
-              <div className="section-hd">
-                <span className="section-label">At a glance</span>
-              </div>
-              <div className="grid-4" style={{ marginBottom: '28px' }}>
+              <div className="db-section-row"><span className="db-section-label">At a glance</span></div>
+              <div className="db-stats-grid" style={{ marginBottom:28 }}>
                 {[
-                  { icon: '🌸', n: memories.length, l: 'Memories' },
-                  { icon: '📖', n: Math.ceil(memories.length / 5) || 0, l: 'Chapters' },
-                  { icon: '📅', n: getDaysOld(child.birthday), l: 'Days old' },
-                  { icon: '👨‍👩‍👧', n: '∞', l: 'Love given' },
-                ].map((s, i) => (
-                  <div key={i} className="stat-card">
-                    <div className="stat-icon">{s.icon}</div>
-                    <div className="stat-num">{s.n}</div>
-                    <div className="stat-lbl">{s.l}</div>
+                  { icon:'🌸', n:memories.length, l:'Memories' },
+                  { icon:'📖', n:Math.ceil(memories.length/5)||0, l:'Chapters' },
+                  { icon:'📅', n:getDaysOld(child.birthday), l:'Days old' },
+                  { icon:'💛', n:'∞', l:'Love given' },
+                ].map((s,i) => (
+                  <div key={i} className="db-stat-card">
+                    <div className="db-stat-card-icon">{s.icon}</div>
+                    <div className="db-stat-card-num">{s.n}</div>
+                    <div className="db-stat-card-lbl">{s.l}</div>
                   </div>
                 ))}
               </div>
 
-              {/* Quick actions */}
-              <div className="section-hd">
-                <span className="section-label">Quick Actions</span>
-              </div>
-              <div className="action-grid">
+              {/* Actions */}
+              <div className="db-section-row"><span className="db-section-label">Quick Actions</span></div>
+              <div className="db-actions-grid">
                 {[
-                  { icon: '✍️', bg: 'rgba(245,222,200,0.45)', title: 'Log a Memory', desc: `What happened with ${child.name} today?`, fn: () => setShowAddMemory(true) },
-                  { icon: '👨‍👩‍👧', bg: 'rgba(200,220,224,0.45)', title: 'Invite Family', desc: 'Share a link — grandparents can add memories too', fn: () => { setShowInviteModal(true); setInviteLink(''); } },
-                  { icon: '🎨', bg: 'rgba(232,208,224,0.45)', title: 'Cartoon Avatar', desc: childCartoonUrl ? 'Update the avatar' : 'Generate from photo', fn: () => setShowCartoonModal(true) },
-                ].map((a, i) => (
-                  <div key={i} className="action-card" onClick={a.fn}>
-                    <div className="action-card-shine" />
-                    <div className="action-card-icon" style={{ background: a.bg }}>{a.icon}</div>
-                    <div className="action-card-title">{a.title}</div>
-                    <div className="action-card-desc">{a.desc}</div>
+                  { icon:'✍️', bg:'rgba(196,146,106,.12)', title:'Log a Memory', desc:`What happened with ${child.name} today?`, fn:() => setShowAddMemory(true) },
+                  { icon:'👨‍👩‍👧', bg:'rgba(100,146,160,.12)', title:'Invite Family', desc:'Share a magic link with grandparents', fn:() => { setShowInviteModal(true); setInviteLink(''); } },
+                  { icon:'🎨', bg:'rgba(160,100,196,.12)', title:'Cartoon Avatar', desc:childCartoonUrl ? 'Update the avatar' : 'Generate from photo', fn:() => setShowCartoonModal(true) },
+                ].map((a,i) => (
+                  <div key={i} className="db-action-card" onClick={a.fn}>
+                    <div className="db-action-shine" />
+                    <div className="db-action-icon" style={{ background:a.bg }}>{a.icon}</div>
+                    <div className="db-action-title">{a.title}</div>
+                    <div className="db-action-desc">{a.desc}</div>
                   </div>
                 ))}
               </div>
 
-              {/* Recent memories preview */}
-              <div className="section-hd">
-                <span className="section-label">Recent Memories</span>
-                {memories.length > 3 && (
-                  <button className="section-action" onClick={() => setActiveView('memories')}>View all →</button>
-                )}
+              {/* Recent memories */}
+              <div className="db-section-row">
+                <span className="db-section-label">Recent Memories</span>
+                {memories.length > 3 && <button className="db-section-link" onClick={() => setActiveView('memories')}>View all →</button>}
               </div>
 
               {memories.length === 0 ? (
-                <div className="empty">
-                  <div className="empty-icon">🌸</div>
-                  <div className="empty-title">The first memory is waiting</div>
-                  <div className="empty-desc">Even the smallest moment becomes part of {child.name}'s story forever.<br />What happened today?</div>
+                <div className="db-empty">
+                  <div className="db-empty-icon">🌸</div>
+                  <div className="db-empty-title">The first memory is waiting</div>
+                  <div className="db-empty-desc">Even the smallest moment becomes part of {child.name}'s story.<br />What happened today?</div>
                 </div>
               ) : (
-                <div className="memory-feed">
-                  {memories.slice(0, 4).map(m => (
-                    <div key={m.id} className="memory-item">
-                      <div className="memory-stripe" />
-                      <div className="memory-body">
-                        <div className="memory-header">
-                          <span className="memory-author-pill">{m.author}</span>
-                          <span className="memory-date-txt">{formatShort(m.memory_date)}</span>
+                <div className="db-memory-feed">
+                  {memories.slice(0,4).map(m => (
+                    <div key={m.id} className="db-memory-item">
+                      <div className="db-memory-stripe" />
+                      <div className="db-memory-body">
+                        <div className="db-memory-meta">
+                          <span className="db-memory-author">{m.author}</span>
+                          <span className="db-memory-date">{formatShort(m.memory_date)}</span>
                         </div>
-                        <div className="memory-text">{m.content}</div>
+                        <div className="db-memory-text">{m.content}</div>
                       </div>
-                      {m.photo_url && <img src={m.photo_url} alt="" className="memory-thumb" />}
+                      {m.photo_url && <img src={m.photo_url} alt="" className="db-memory-thumb" />}
                     </div>
                   ))}
                 </div>
@@ -978,31 +904,30 @@ export default function Dashboard() {
 
           {/* ━━━ MEMORIES VIEW ━━━ */}
           {child && activeView === 'memories' && (
-            <div className="content">
-              <div className="section-hd">
-                <span className="section-label">All Memories · {memories.length}</span>
-                <button className="btn-outline" style={{ fontSize: '11px', padding: '8px 16px' }} onClick={() => setShowAddMemory(true)}>+ Add</button>
+            <div className="db-content db-stagger">
+              <div className="db-section-row">
+                <span className="db-section-label">All Memories · {memories.length}</span>
+                <button className="db-btn-ghost" style={{ fontSize:'11px', padding:'7px 14px' }} onClick={() => setShowAddMemory(true)}>+ Add</button>
               </div>
-
               {memories.length === 0 ? (
-                <div className="empty">
-                  <div className="empty-icon">🌸</div>
-                  <div className="empty-title">No memories yet</div>
-                  <div className="empty-desc">Start logging moments for {child.name} — big or small, they all matter.</div>
+                <div className="db-empty">
+                  <div className="db-empty-icon">🌸</div>
+                  <div className="db-empty-title">No memories yet</div>
+                  <div className="db-empty-desc">Start logging moments — big or small, they all matter.</div>
                 </div>
               ) : (
-                <div className="memory-feed">
+                <div className="db-memory-feed">
                   {memories.map(m => (
-                    <div key={m.id} className="memory-item">
-                      <div className="memory-stripe" />
-                      <div className="memory-body">
-                        <div className="memory-header">
-                          <span className="memory-author-pill">{m.author}</span>
-                          <span className="memory-date-txt">{formatDate(m.memory_date)}</span>
+                    <div key={m.id} className="db-memory-item">
+                      <div className="db-memory-stripe" />
+                      <div className="db-memory-body">
+                        <div className="db-memory-meta">
+                          <span className="db-memory-author">{m.author}</span>
+                          <span className="db-memory-date">{formatDate(m.memory_date)}</span>
                         </div>
-                        <div className="memory-text">{m.content}</div>
+                        <div className="db-memory-text">{m.content}</div>
                       </div>
-                      {m.photo_url && <img src={m.photo_url} alt="" className="memory-thumb" />}
+                      {m.photo_url && <img src={m.photo_url} alt="" className="db-memory-thumb" />}
                     </div>
                   ))}
                 </div>
@@ -1012,44 +937,38 @@ export default function Dashboard() {
 
           {/* ━━━ STORY VIEW ━━━ */}
           {child && activeView === 'story' && (
-            <div className="content">
-              <div className="section-hd">
-                <span className="section-label">The Story of {child.name}</span>
-              </div>
+            <div className="db-content db-stagger">
+              <div className="db-section-row"><span className="db-section-label">The Story of {child.name}</span></div>
 
-              <button className="hero-banner" onClick={() => generateStory(false)} disabled={generating || memories.length === 0} style={{ marginBottom: '24px' }}>
-                <div className="hero-orb-1" /><div className="hero-orb-2" />
-                <div className="hero-eyebrow">Continue the novel</div>
+              <button className="db-hero" onClick={() => generateStory(false)} disabled={generating || memories.length === 0} style={{ marginBottom:28 }}>
+                <div className="db-hero-orb1" /><div className="db-hero-orb2" />
+                <div className="db-hero-eyebrow">Continue the novel</div>
                 {generating
-                  ? <div className="hero-generating">
-                      <div className="hero-spinner" />
-                      <div className="hero-title">Writing the next chapter…</div>
+                  ? <div style={{ display:'flex', alignItems:'center', gap:12, position:'relative', zIndex:1 }}>
+                      <div className="db-hero-spinner" />
+                      <div className="db-hero-title">Writing the next chapter…</div>
                     </div>
                   : <>
-                      <div className="hero-title">Add a new <em>chapter</em></div>
-                      <div className="hero-sub">{memories.length} memories available to weave into the story</div>
-                      <div className="hero-arrow">→</div>
+                      <div className="db-hero-title">Add a new <em>chapter</em></div>
+                      <div className="db-hero-sub">{memories.length} memories to weave into the story</div>
+                      <div className="db-hero-arrow">→</div>
                     </>}
               </button>
 
               {memories.length === 0 ? (
-                <div className="empty">
-                  <div className="empty-icon">📖</div>
-                  <div className="empty-title">No chapters yet</div>
-                  <div className="empty-desc">Add some memories first, then let AI weave them into {child.name}'s story.</div>
+                <div className="db-empty">
+                  <div className="db-empty-icon">📖</div>
+                  <div className="db-empty-title">No chapters yet</div>
+                  <div className="db-empty-desc">Add some memories first, then let AI weave them into {child.name}'s story.</div>
                 </div>
               ) : (
-                <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '48px', border: '1px solid var(--border)', textAlign: 'center' }}>
+                <div style={{ background:'var(--surface)', borderRadius:'var(--radius)', padding:'48px', border:'1px solid var(--border)', textAlign:'center' }}>
                   {childCartoonUrl && (
-                    <img src={childCartoonUrl} alt={child.name} style={{ width: 76, height: 76, borderRadius: '50%', objectFit: 'cover', border: '3px solid #F5DEC8', marginBottom: 20, display: 'block', margin: '0 auto 20px' }} />
+                    <img src={childCartoonUrl} alt={child.name} style={{ width:72, height:72, borderRadius:'50%', objectFit:'cover', border:'2px solid rgba(196,146,106,.3)', display:'block', margin:'0 auto 20px', animation:'db-avatar-glow 4s ease-in-out infinite' }} />
                   )}
-                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: '36px', fontWeight: 400, color: 'var(--text)', marginBottom: 8 }}>
-                    {child.name}'s Story
-                  </div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-3)', marginBottom: 28 }}>
-                    {memories.length} memories · A growing family novel
-                  </div>
-                  <button className="btn-primary" style={{ margin: '0 auto' }} onClick={() => generateStory(false)} disabled={generating}>
+                  <div style={{ fontFamily:'var(--font-serif)', fontSize:'34px', fontWeight:300, color:'var(--text)', marginBottom:8 }}>{child.name}'s Story</div>
+                  <div style={{ fontSize:'12.5px', color:'var(--text-3)', marginBottom:28 }}>{memories.length} memories · A growing family novel</div>
+                  <button className="db-btn-solid" style={{ margin:'0 auto' }} onClick={() => generateStory(false)} disabled={generating}>
                     {generating ? '✦ Writing…' : '✦ Read & Add Chapter'}
                   </button>
                 </div>
@@ -1061,18 +980,18 @@ export default function Dashboard() {
 
       {/* ━━━━━ ADD CHILD MODAL ━━━━━ */}
       {showAddChild && (
-        <div className="overlay">
-          <div className="modal">
-            <div className="modal-bar" />
-            <h2 className="modal-title">Add your <em>child</em></h2>
-            <p className="modal-desc">Their story starts the moment you add them here.</p>
-            <label className="f-label">Child's Name</label>
-            <input className="f-input" placeholder="e.g. Ivaan" value={childName} onChange={e => setChildName(e.target.value)} />
-            <label className="f-label">Birthday</label>
-            <input className="f-input" type="date" value={childBirthday} onChange={e => setChildBirthday(e.target.value)} />
-            <div className="modal-actions">
-              <button className="btn-modal-save" onClick={saveChild} disabled={saving}>{saving ? 'Saving…' : 'Create Profile →'}</button>
-              <button className="btn-modal-cancel" onClick={() => setShowAddChild(false)}>Cancel</button>
+        <div className="db-overlay">
+          <div className="db-modal">
+            <div className="db-modal-bar" />
+            <h2 className="db-modal-title">Add your <em>child</em></h2>
+            <p className="db-modal-desc">Their story starts the moment you add them here.</p>
+            <label className="db-f-label">Child's Name</label>
+            <input className="db-f-input" placeholder="e.g. Ivaan" value={childName} onChange={e => setChildName(e.target.value)} />
+            <label className="db-f-label">Birthday</label>
+            <input className="db-f-input" type="date" value={childBirthday} onChange={e => setChildBirthday(e.target.value)} />
+            <div className="db-modal-btns">
+              <button className="db-btn-modal-save" onClick={saveChild} disabled={saving}>{saving ? 'Saving…' : 'Create Profile →'}</button>
+              <button className="db-btn-modal-cancel" onClick={() => setShowAddChild(false)}>Cancel</button>
             </div>
           </div>
         </div>
@@ -1080,32 +999,32 @@ export default function Dashboard() {
 
       {/* ━━━━━ ADD MEMORY MODAL ━━━━━ */}
       {showAddMemory && (
-        <div className="overlay" onClick={() => setShowAddMemory(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-bar" />
-            <h2 className="modal-title">Log a <em>memory</em></h2>
-            <p className="modal-desc">Even the smallest moment becomes part of {child?.name}'s story forever.</p>
-            <label className="f-label">Who is logging this?</label>
-            <input className="f-input" placeholder="Papa, Mama, Nana…" value={memoryAuthor} onChange={e => setMemoryAuthor(e.target.value)} />
-            <label className="f-label">What happened?</label>
-            <textarea className="f-textarea" placeholder={`e.g. ${child?.name} stood up all by herself today and just grinned at me…`} value={memoryText} onChange={e => setMemoryText(e.target.value)} />
-            <label className="f-label">Photo (optional)</label>
+        <div className="db-overlay" onClick={() => setShowAddMemory(false)}>
+          <div className="db-modal" onClick={e => e.stopPropagation()}>
+            <div className="db-modal-bar" />
+            <h2 className="db-modal-title">Log a <em>memory</em></h2>
+            <p className="db-modal-desc">Even the smallest moment becomes part of {child?.name}'s story forever.</p>
+            <label className="db-f-label">Who is logging this?</label>
+            <input className="db-f-input" placeholder="Papa, Mama, Nana…" value={memoryAuthor} onChange={e => setMemoryAuthor(e.target.value)} />
+            <label className="db-f-label">What happened?</label>
+            <textarea className="db-f-textarea" placeholder={`e.g. ${child?.name} stood up all by herself today and just grinned at me…`} value={memoryText} onChange={e => setMemoryText(e.target.value)} />
+            <label className="db-f-label">Photo (optional)</label>
             {memoryPhotoPreview ? (
-              <div style={{ position: 'relative', marginBottom: 18 }}>
-                <img src={memoryPhotoPreview} alt="Preview" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 10 }} />
+              <div style={{ position:'relative', marginBottom:16 }}>
+                <img src={memoryPhotoPreview} alt="Preview" style={{ width:'100%', maxHeight:190, objectFit:'cover', borderRadius:9 }} />
                 <button onClick={() => { setMemoryPhoto(null); setMemoryPhotoPreview(null); }}
-                  style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)', color: 'white', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                  style={{ position:'absolute', top:8, right:8, background:'rgba(0,0,0,.65)', color:'white', border:'none', borderRadius:'50%', width:26, height:26, cursor:'pointer', fontSize:15, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
               </div>
             ) : (
-              <label className="f-upload">
-                <span style={{ fontSize: 28 }}>📷</span>
+              <label className="db-f-upload">
+                <span style={{ fontSize:26 }}>📷</span>
                 <span>Tap to add a photo</span>
-                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files[0]; if (!f) return; setMemoryPhoto(f); setMemoryPhotoPreview(URL.createObjectURL(f)); }} />
+                <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => { const f=e.target.files[0]; if(!f) return; setMemoryPhoto(f); setMemoryPhotoPreview(URL.createObjectURL(f)); }} />
               </label>
             )}
-            <div className="modal-actions">
-              <button className="btn-modal-save" onClick={saveMemory} disabled={saving}>{saving ? 'Saving…' : 'Save Memory →'}</button>
-              <button className="btn-modal-cancel" onClick={() => { setShowAddMemory(false); setMemoryPhoto(null); setMemoryPhotoPreview(null); }}>Cancel</button>
+            <div className="db-modal-btns">
+              <button className="db-btn-modal-save" onClick={saveMemory} disabled={saving}>{saving ? 'Saving…' : 'Save Memory →'}</button>
+              <button className="db-btn-modal-cancel" onClick={() => { setShowAddMemory(false); setMemoryPhoto(null); setMemoryPhotoPreview(null); }}>Cancel</button>
             </div>
           </div>
         </div>
@@ -1113,56 +1032,56 @@ export default function Dashboard() {
 
       {/* ━━━━━ CARTOON MODAL ━━━━━ */}
       {showCartoonModal && (
-        <div className="overlay" onClick={() => { if (!cartoonizing) { setShowCartoonModal(false); setCartoonPhoto(null); setCartoonPhotoPreview(null); } }}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-bar" />
-            <h2 className="modal-title">🎨 Cartoon <em>Avatar</em></h2>
-            <p className="modal-desc">Transform a photo of {child?.name} into a beautiful Pixar-style illustration.</p>
+        <div className="db-overlay" onClick={() => { if(!cartoonizing){ setShowCartoonModal(false); setCartoonPhoto(null); setCartoonPhotoPreview(null); } }}>
+          <div className="db-modal" onClick={e => e.stopPropagation()}>
+            <div className="db-modal-bar" />
+            <h2 className="db-modal-title">🎨 Cartoon <em>Avatar</em></h2>
+            <p className="db-modal-desc">Transform a photo of {child?.name} into a beautiful Pixar-style illustration.</p>
 
             {cartoonizing && (
-              <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                <div className="cartoon-spinner-ring" />
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: 20, color: 'var(--text)', marginBottom: 6 }}>Creating {child?.name}'s cartoon…</div>
-                <div style={{ fontSize: 13, color: 'var(--text-3)' }}>This takes about 30–60 seconds ✨</div>
+              <div style={{ textAlign:'center', padding:'32px 0' }}>
+                <div className="db-cartoon-spinner" />
+                <div style={{ fontFamily:'var(--font-serif)', fontSize:19, color:'var(--text)', marginBottom:6 }}>Creating {child?.name}'s cartoon…</div>
+                <div style={{ fontSize:12.5, color:'var(--text-3)' }}>This takes about 30–60 seconds ✨</div>
               </div>
             )}
 
             {!cartoonizing && childCartoonUrl && !cartoonPhotoPreview && (
-              <div style={{ textAlign: 'center' }}>
-                <img src={childCartoonUrl} alt="avatar" style={{ width: 140, height: 140, borderRadius: '50%', objectFit: 'cover', border: '4px solid #F5DEC8', display: 'block', margin: '0 auto 14px' }} />
-                <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 22 }}>{child?.name}'s current avatar</p>
-                <label className="f-upload">
-                  <span style={{ fontSize: 22 }}>📷</span>
+              <div style={{ textAlign:'center' }}>
+                <img src={childCartoonUrl} alt="avatar" style={{ width:130, height:130, borderRadius:'50%', objectFit:'cover', border:'2px solid rgba(196,146,106,.3)', display:'block', margin:'0 auto 14px', animation:'db-avatar-glow 4s ease-in-out infinite' }} />
+                <p style={{ fontSize:12.5, color:'var(--text-3)', marginBottom:22 }}>{child?.name}'s current avatar</p>
+                <label className="db-f-upload">
+                  <span style={{ fontSize:20 }}>📷</span>
                   <span>Upload a new photo to regenerate</span>
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files[0]; if (!f) return; setCartoonPhoto(f); setCartoonPhotoPreview(URL.createObjectURL(f)); }} />
+                  <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => { const f=e.target.files[0]; if(!f) return; setCartoonPhoto(f); setCartoonPhotoPreview(URL.createObjectURL(f)); }} />
                 </label>
-                <button className="btn-modal-cancel" style={{ width: '100%' }} onClick={() => setShowCartoonModal(false)}>Close</button>
+                <button className="db-btn-modal-cancel" style={{ width:'100%' }} onClick={() => setShowCartoonModal(false)}>Close</button>
               </div>
             )}
 
             {!cartoonizing && cartoonPhotoPreview && (
               <>
-                <div className="cartoon-before-after">
-                  <img src={cartoonPhotoPreview} alt="Original" />
-                  <span style={{ fontSize: 24, color: 'var(--accent)' }}>→</span>
-                  <div style={{ width: 110, height: 110, borderRadius: '50%', background: 'linear-gradient(135deg, #F5DEC8, #E8D0E0)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '3px dashed rgba(190,170,150,0.4)', fontSize: 28 }}>✨</div>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:20, margin:'20px 0 24px' }}>
+                  <img src={cartoonPhotoPreview} alt="Original" style={{ width:105, height:105, borderRadius:'50%', objectFit:'cover', border:'2px solid rgba(196,146,106,.2)' }} />
+                  <span style={{ fontSize:22, color:'var(--accent)' }}>→</span>
+                  <div style={{ width:105, height:105, borderRadius:'50%', background:'rgba(196,146,106,.08)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px dashed rgba(196,146,106,.2)', fontSize:28 }}>✨</div>
                 </div>
-                <div className="modal-actions">
-                  <button className="btn-modal-save" onClick={generateCartoon}>✨ Generate Cartoon</button>
-                  <button className="btn-modal-cancel" onClick={() => { setCartoonPhoto(null); setCartoonPhotoPreview(null); }}>Change Photo</button>
+                <div className="db-modal-btns">
+                  <button className="db-btn-modal-save" onClick={generateCartoon}>✨ Generate Cartoon</button>
+                  <button className="db-btn-modal-cancel" onClick={() => { setCartoonPhoto(null); setCartoonPhotoPreview(null); }}>Change Photo</button>
                 </div>
               </>
             )}
 
             {!cartoonizing && !childCartoonUrl && !cartoonPhotoPreview && (
               <>
-                <label className="f-upload" style={{ padding: 40 }}>
-                  <span style={{ fontSize: 40 }}>📷</span>
-                  <span style={{ fontFamily: 'var(--font-serif)', fontSize: 17 }}>Upload a photo of {child?.name}</span>
-                  <span style={{ fontSize: 12, color: 'var(--text-3)', textAlign: 'center' }}>Clear, front-facing photo works best</span>
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files[0]; if (!f) return; setCartoonPhoto(f); setCartoonPhotoPreview(URL.createObjectURL(f)); }} />
+                <label className="db-f-upload" style={{ padding:40 }}>
+                  <span style={{ fontSize:38 }}>📷</span>
+                  <span style={{ fontFamily:'var(--font-serif)', fontSize:16 }}>Upload a photo of {child?.name}</span>
+                  <span style={{ fontSize:11.5, color:'var(--text-3)', textAlign:'center' }}>Clear, front-facing photo works best</span>
+                  <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => { const f=e.target.files[0]; if(!f) return; setCartoonPhoto(f); setCartoonPhotoPreview(URL.createObjectURL(f)); }} />
                 </label>
-                <button className="btn-modal-cancel" style={{ width: '100%' }} onClick={() => setShowCartoonModal(false)}>Cancel</button>
+                <button className="db-btn-modal-cancel" style={{ width:'100%' }} onClick={() => setShowCartoonModal(false)}>Cancel</button>
               </>
             )}
           </div>
@@ -1171,26 +1090,24 @@ export default function Dashboard() {
 
       {/* ━━━━━ INVITE MODAL ━━━━━ */}
       {showInviteModal && (
-        <div className="overlay" onClick={() => setShowInviteModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-bar" />
-            <h2 className="modal-title">Invite <em>Family</em></h2>
-            <p className="modal-desc">Share this link with grandparents — no account needed. They can add memories and photos for {child?.name} directly.</p>
+        <div className="db-overlay" onClick={() => setShowInviteModal(false)}>
+          <div className="db-modal" onClick={e => e.stopPropagation()}>
+            <div className="db-modal-bar" />
+            <h2 className="db-modal-title">Invite <em>Family</em></h2>
+            <p className="db-modal-desc">Share this link with grandparents — no account needed. They can add memories for {child?.name} directly.</p>
             {!inviteLink ? (
-              <div className="modal-actions">
-                <button className="btn-modal-save" onClick={generateInviteLink}>Generate Invite Link</button>
-                <button className="btn-modal-cancel" onClick={() => setShowInviteModal(false)}>Cancel</button>
+              <div className="db-modal-btns">
+                <button className="db-btn-modal-save" onClick={generateInviteLink}>Generate Invite Link</button>
+                <button className="db-btn-modal-cancel" onClick={() => setShowInviteModal(false)}>Cancel</button>
               </div>
             ) : (
               <>
-                <div className="invite-code">{inviteLink}</div>
-                <div className="modal-actions">
-                  <button className="btn-modal-save" onClick={() => { navigator.clipboard.writeText(inviteLink); alert('Link copied! Send it on WhatsApp 💙'); }}>
-                    📋 Copy Link
-                  </button>
-                  <button className="btn-modal-cancel" onClick={() => setShowInviteModal(false)}>Close</button>
+                <div className="db-invite-code">{inviteLink}</div>
+                <div className="db-modal-btns">
+                  <button className="db-btn-modal-save" onClick={() => { navigator.clipboard.writeText(inviteLink); alert('Copied! Send it on WhatsApp 💙'); }}>📋 Copy Link</button>
+                  <button className="db-btn-modal-cancel" onClick={() => setShowInviteModal(false)}>Close</button>
                 </div>
-                <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 14, textAlign: 'center' }}>Anyone with this link can add memories for {child?.name}</p>
+                <p style={{ fontSize:11.5, color:'var(--text-3)', marginTop:12, textAlign:'center' }}>Anyone with this link can add memories for {child?.name}</p>
               </>
             )}
           </div>
@@ -1207,7 +1124,6 @@ export default function Dashboard() {
           onRegenerate={() => { setShowStory(false); generateStory(true); }}
         />
       )}
-
     </>
   );
 }
