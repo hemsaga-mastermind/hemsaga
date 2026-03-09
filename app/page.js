@@ -214,14 +214,14 @@ export default function Home() {
 
       {/* NAV */}
       <nav id="navbar">
-        <a href="#" className="nav-logo">
+        <a href="/auth" className="nav-logo">
           <span>📖</span> Hemsaga
         </a>
         <div className="nav-links">
           <a href="#how">How it works</a>
           <a href="#family">Family</a>
           <a href="#story">Sample Story</a>
-          <a href="#" className="btn-nav">Begin Your Story</a>
+          <a href="/auth" className="btn-nav">Begin Your Story</a>
         </div>
       </nav>
 
@@ -240,7 +240,7 @@ export default function Home() {
           your child will treasure forever.
         </p>
         <div className="hero-buttons fade-up-4">
-          <a href="#" className="btn-primary">Begin Ivaan's Story →</a>
+          <a href="/auth" className="btn-primary">Begin Ivaan's Story →</a>
           <a href="#story" className="btn-ghost">See a Sample</a>
         </div>
 
@@ -321,7 +321,7 @@ export default function Home() {
               It's Mama noticing every small change. It's Dadi calling from
               thousands of kilometres away, full of love. Hemsaga holds all of it.
             </p>
-            <a href="#" className="btn-primary">Start Your Family Story</a>
+            <a href="/auth" className="btn-primary">Start Your Family Story</a>
           </div>
         </div>
       </div>
@@ -345,18 +345,18 @@ export default function Home() {
           Ivaan's first chapter is waiting to be written.
         </p>
         <div className="cta-buttons">
-          <a href="#" className="btn-cta-primary">Start for Free →</a>
-          <a href="#" className="btn-cta-ghost">See how it works</a>
+          <a href="/auth" className="btn-cta-primary">Start for Free →</a>
+          <a href="/auth" className="btn-cta-ghost">See how it works</a>
         </div>
       </div>
 
       {/* FOOTER */}
       <footer>
-        <div>© 2025 Hemsaga · Built with love in Norrköping, Sweden 🇸🇪</div>
+        <div>© 2026 Hemsaga · Built with love , by a Loving father</div>
         <div style={{display:'flex', gap:'24px'}}>
-          <a href="#">Privacy</a>
-          <a href="#">Terms</a>
-          <a href="#">hello@hemsaga.com</a>
+          <a href="/auth">Privacy</a>
+          <a href="/auth">Terms</a>
+          <a href="/auth">admin@dancing-flamingo.org</a>
         </div>
       </footer>
     </>
