@@ -29,11 +29,9 @@ export default function Dashboard() {
   const [childCartoonUrl, setChildCartoonUrl] = useState(null);
   const [cartoonPhoto, setCartoonPhoto] = useState(null);
   const [cartoonPhotoPreview, setCartoonPhotoPreview] = useState(null);
-  const [entered, setEntered] = useState(false);
   const router = useRouter();
 
   useEffect(() => { getUser(); }, []);
-  useEffect(() => { if (!loading) setTimeout(() => setEntered(true), 80); }, [loading]);
 
   const getUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -127,8 +125,7 @@ export default function Dashboard() {
       const data = await res.json();
       if (data.cartoonUrl) {
         await supabase.from('children').update({ cartoon_url: data.cartoonUrl }).eq('id', child.id);
-        setChildCartoonUrl(data.cartoonUrl);
-        setChild(prev => ({ ...prev, cartoon_url: data.cartoonUrl }));
+        setChildCartoonUrl(data.cartoonUrl); setChild(prev => ({ ...prev, cartoon_url: data.cartoonUrl }));
         setShowCartoonModal(false); setCartoonPhoto(null); setCartoonPhotoPreview(null);
       } else { alert('Failed: ' + (data.error || 'Unknown error')); }
     } catch (err) { alert('Check Replicate API key in Vercel.'); }
@@ -142,18 +139,16 @@ export default function Dashboard() {
     const y = Math.floor(m / 12);
     return `${y} year${y > 1 ? 's' : ''} old`;
   };
-
-  const getDaysOld = (birthday) => Math.floor((new Date() - new Date(birthday)) / 86400000);
+  const getDaysOld = (birthday) => Math.floor((new Date() - new Date(birthday)) / 86400000).toLocaleString();
   const formatDate = (d) => new Date(d).toLocaleDateString('en-SE', { day: 'numeric', month: 'long', year: 'numeric' });
   const formatShort = (d) => new Date(d).toLocaleDateString('en-SE', { day: 'numeric', month: 'short' });
-
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Papa';
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0C0906', fontFamily: "'Playfair Display', serif", fontSize: '20px', color: 'rgba(245,222,200,0.5)' }}>
-      <div style={{ textAlign: 'center', animation: 'db-pulse 2s ease infinite' }}>
-        <div style={{ fontSize: '36px', marginBottom: '14px' }}>📖</div>
-        Loading your family story…
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF7F2' }}>
+      <div style={{ textAlign: 'center', fontFamily: "'Lora', Georgia, serif", color: '#8B6B4A' }}>
+        <div style={{ fontSize: '40px', marginBottom: '16px', display: 'inline-block', animation: 'hs-breathe 2s ease-in-out infinite' }}>🌸</div>
+        <div style={{ fontSize: '16px', fontStyle: 'italic', opacity: 0.7 }}>Loading your family story…</div>
       </div>
     </div>
   );
@@ -161,632 +156,931 @@ export default function Dashboard() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600&family=DM+Sans:wght@300;400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap');
 
+        /* ═══════════════════════════════════════════════════
+           DESIGN TOKENS
+           Warm ivory + deep espresso + terracotta
+        ═══════════════════════════════════════════════════ */
         :root {
-          --bg:       #0C0906;
-          --bg-2:     #130F0A;
-          --surface:  rgba(255,255,255,0.04);
-          --surface-hover: rgba(255,255,255,0.07);
-          --border:   rgba(245,222,200,0.08);
-          --border-h: rgba(245,222,200,0.2);
-          --text:     rgba(245,222,200,0.92);
-          --text-2:   rgba(245,222,200,0.5);
-          --text-3:   rgba(245,222,200,0.28);
-          --accent:   #C4926A;
-          --accent-d: #A0643A;
-          --accent-glow: rgba(196,146,106,0.15);
-          --gold:     #E8C88A;
-          --sidebar-w: 268px;
-          --font-serif: 'Playfair Display', Georgia, serif;
-          --font-sans:  'DM Sans', system-ui, sans-serif;
-          --radius: 16px;
-          --radius-sm: 10px;
+          --ivory:        #FAF7F2;
+          --ivory-2:      #F3EDE4;
+          --ivory-3:      #EAE0D3;
+          --parchment:    #E8DDD0;
+          --espresso:     #2C1A0E;
+          --espresso-2:   #4A2E1A;
+          --espresso-3:   #6B4226;
+          --terra:        #C4724A;    /* warm terracotta — primary accent */
+          --terra-light:  rgba(196,114,74,0.10);
+          --terra-mid:    rgba(196,114,74,0.22);
+          --sage:         #7A9E7E;    /* soft sage — secondary accent */
+          --blush:        #D4A5A0;    /* blush — tertiary */
+          --ink:          #2C1A0E;
+          --ink-2:        #5C3D24;
+          --ink-3:        #8C6B4E;
+          --ink-4:        #B89980;
+          --ink-5:        #D4BBA8;
+          --white:        #FFFFFF;
+          --shadow-xs:    0 1px 3px rgba(44,26,14,0.06), 0 1px 2px rgba(44,26,14,0.04);
+          --shadow-sm:    0 2px 8px rgba(44,26,14,0.07), 0 1px 3px rgba(44,26,14,0.05);
+          --shadow-md:    0 4px 16px rgba(44,26,14,0.09), 0 2px 6px rgba(44,26,14,0.06);
+          --shadow-lg:    0 12px 40px rgba(44,26,14,0.12), 0 4px 12px rgba(44,26,14,0.08);
+          --shadow-xl:    0 24px 64px rgba(44,26,14,0.15), 0 8px 20px rgba(44,26,14,0.10);
+          --font-serif:   'Lora', 'Georgia', serif;
+          --font-sans:    'Plus Jakarta Sans', system-ui, sans-serif;
+          --r-sm:         10px;
+          --r-md:         16px;
+          --r-lg:         24px;
+          --r-xl:         32px;
+          --sidebar-w:    280px;
+          --topbar-h:     64px;
         }
 
-        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-        html, body { background: var(--bg); color: var(--text); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
-
-        /* ── Keyframes ── */
-        @keyframes db-pulse    { 0%,100%{opacity:.5} 50%{opacity:1} }
-        @keyframes db-float    { 0%{transform:translateY(100vh) scale(0);opacity:0} 8%{opacity:.5} 92%{opacity:.2} 100%{transform:translateY(-8vh) scale(1.6);opacity:0} }
-        @keyframes db-fadein   { from{opacity:0} to{opacity:1} }
-        @keyframes db-up       { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes db-glow-pulse { 0%,100%{opacity:.18} 50%{opacity:.32} }
-        @keyframes db-spin     { to{transform:rotate(360deg)} }
-        @keyframes db-shimmer  { 0%{transform:translateX(-100%) skewX(-15deg)} 100%{transform:translateX(220%) skewX(-15deg)} }
-        @keyframes db-avatar-glow { 0%,100%{box-shadow:0 0 24px rgba(196,146,106,.15),0 0 0 2px rgba(196,146,106,.12)} 50%{box-shadow:0 0 48px rgba(196,146,106,.35),0 0 0 2px rgba(196,146,106,.3)} }
-        @keyframes db-card-in  { from{opacity:0;transform:translateY(28px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
-
-        /* ── Layout ── */
-        .db-layout { display:flex; min-height:100vh; }
-
-        /* ━━━━━ SIDEBAR ━━━━━ */
-        .db-sidebar {
-          width: var(--sidebar-w); position:fixed; top:0; left:0; height:100vh;
-          background: #0A0806;
-          border-right: 1px solid var(--border);
-          display:flex; flex-direction:column; z-index:100; overflow:hidden;
-        }
-        .db-sb-glow1 {
-          position:absolute; top:-120px; right:-80px;
-          width:320px; height:320px; border-radius:50%;
-          background:radial-gradient(circle,rgba(196,146,106,.07) 0%,transparent 70%);
-          pointer-events:none; animation:db-glow-pulse 6s ease-in-out infinite;
-        }
-        .db-sb-glow2 {
-          position:absolute; bottom:-120px; left:-80px;
-          width:360px; height:360px; border-radius:50%;
-          background:radial-gradient(circle,rgba(196,146,106,.05) 0%,transparent 70%);
-          pointer-events:none; animation:db-glow-pulse 8s ease-in-out infinite 2s;
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+          background: var(--ivory);
+          color: var(--ink);
+          font-family: var(--font-sans);
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Brand */
-        .db-brand {
-          padding:26px 22px 20px; position:relative; z-index:1;
-          border-bottom:1px solid var(--border);
-        }
-        .db-logo {
-          font-family:var(--font-serif); font-size:21px; font-weight:700;
-          color:var(--text); display:flex; align-items:center; gap:10px;
-          margin-bottom:4px;
-        }
-        .db-logo-icon {
-          width:30px; height:30px; border-radius:8px;
-          background:rgba(196,146,106,.15); border:1px solid rgba(196,146,106,.2);
-          display:flex; align-items:center; justify-content:center; font-size:15px;
-        }
-        .db-tagline {
-          font-size:9.5px; color:var(--text-3); letter-spacing:2.5px;
-          text-transform:uppercase; padding-left:40px;
+        /* ── Global keyframes ── */
+        @keyframes hs-breathe   { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+        @keyframes hs-fadein    { from{opacity:0} to{opacity:1} }
+        @keyframes hs-slideup   { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes hs-spin      { to{transform:rotate(360deg)} }
+        @keyframes hs-shimmer   { 0%{transform:translateX(-100%) skewX(-12deg)} 100%{transform:translateX(250%) skewX(-12deg)} }
+        @keyframes hs-pop       { 0%{transform:scale(.96);opacity:0} 60%{transform:scale(1.01)} 100%{transform:scale(1);opacity:1} }
+        @keyframes hs-ripple    { 0%{transform:scale(0);opacity:.4} 100%{transform:scale(4);opacity:0} }
+        @keyframes hs-avatar-ring { 0%,100%{box-shadow:0 0 0 3px rgba(196,114,74,.18),0 0 0 6px rgba(196,114,74,.06)} 50%{box-shadow:0 0 0 3px rgba(196,114,74,.35),0 0 0 8px rgba(196,114,74,.12)} }
+        @keyframes hs-dot-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+        @keyframes hs-hero-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+        @keyframes hs-stagger-in {
+          from { opacity:0; transform:translateY(14px); }
+          to   { opacity:1; transform:translateY(0); }
         }
 
-        /* Profile */
-        .db-profile {
-          padding:18px 18px 0; position:relative; z-index:1;
-        }
-        .db-profile-btn {
-          display:flex; align-items:center; gap:12px; width:100%;
-          padding:12px 14px; border-radius:var(--radius-sm);
-          background:var(--surface); border:1px solid var(--border);
-          cursor:pointer; transition:all .22s;
-          border-bottom: none; border-radius: 12px 12px 0 0;
-          background: linear-gradient(135deg, rgba(196,146,106,.08), rgba(196,146,106,.04));
-        }
-        .db-profile-btn:hover { background:rgba(196,146,106,.12); border-color:rgba(196,146,106,.2); }
-        .db-avatar-wrap {
-          position:relative; flex-shrink:0;
-        }
-        .db-avatar {
-          width:46px; height:46px; border-radius:50%;
-          background:linear-gradient(135deg,rgba(196,146,106,.3),rgba(196,146,106,.1));
-          display:flex; align-items:center; justify-content:center;
-          font-size:20px; overflow:hidden;
-          animation:db-avatar-glow 4s ease-in-out infinite;
-        }
-        .db-avatar img { width:100%; height:100%; object-fit:cover; }
-        .db-avatar-ring {
-          position:absolute; inset:-3px; border-radius:50%;
-          border:1.5px solid rgba(196,146,106,.25);
-          pointer-events:none;
-        }
-        .db-avatar-edit {
-          position:absolute; bottom:-1px; right:-1px;
-          width:15px; height:15px; border-radius:50%;
-          background:var(--accent); border:2px solid var(--bg);
-          font-size:7px; display:flex; align-items:center; justify-content:center;
-          color:white;
-        }
-        .db-child-name {
-          font-family:var(--font-serif); font-size:17px; font-weight:600;
-          color:var(--text); line-height:1.2;
-          white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-        }
-        .db-child-sub { font-size:11px; color:var(--text-3); margin-top:2px; }
+        /* ═══════════════════════════════════════════════════
+           LAYOUT
+        ═══════════════════════════════════════════════════ */
+        .hs-layout { display: flex; min-height: 100vh; }
 
-        /* Stats strip */
-        .db-stats {
-          margin:0 18px; display:flex;
-          background:rgba(196,146,106,.04);
-          border:1px solid var(--border); border-top:none;
-          border-radius:0 0 12px 12px; overflow:hidden;
-        }
-        .db-stat { flex:1; text-align:center; padding:12px 4px; }
-        .db-stat:hover { background:var(--surface-hover); }
-        .db-stat-n {
-          font-family:var(--font-serif); font-size:22px; font-weight:300;
-          color:var(--text); line-height:1;
-        }
-        .db-stat-l {
-          font-size:8.5px; color:var(--text-3); letter-spacing:1.5px;
-          text-transform:uppercase; margin-top:3px;
-        }
-        .db-stat-div { width:1px; background:var(--border); margin:8px 0; }
-
-        /* Nav */
-        .db-nav { flex:1; padding:10px 12px; position:relative; z-index:1; overflow-y:auto; }
-        .db-nav-section {
-          font-size:9px; letter-spacing:3px; text-transform:uppercase;
-          color:var(--text-3); padding:16px 8px 6px; font-weight:500;
-        }
-        .db-nav-item {
-          display:flex; align-items:center; gap:9px; width:100%;
-          padding:9px 10px; border-radius:8px; border:none; background:none;
-          font-family:var(--font-sans); font-size:13px; font-weight:400;
-          color:var(--text-2); cursor:pointer; transition:all .18s;
-          margin-bottom:1px; text-align:left;
-        }
-        .db-nav-item:hover { background:var(--surface-hover); color:var(--text); }
-        .db-nav-item.active { background:rgba(196,146,106,.15); color:var(--accent); }
-        .db-nav-item.active .db-nav-icon { background:rgba(196,146,106,.2); }
-        .db-nav-icon {
-          width:26px; height:26px; border-radius:7px; flex-shrink:0;
-          background:rgba(255,255,255,.04); display:flex; align-items:center;
-          justify-content:center; font-size:13px;
-        }
-        .db-nav-badge {
-          margin-left:auto; background:var(--accent); color:white;
-          font-size:9.5px; font-weight:600; padding:1px 6px; border-radius:8px;
+        /* ═══════════════════════════════════════════════════
+           SIDEBAR
+        ═══════════════════════════════════════════════════ */
+        .hs-sidebar {
+          width: var(--sidebar-w);
+          position: fixed; top: 0; left: 0; height: 100vh;
+          background: var(--espresso);
+          display: flex; flex-direction: column;
+          z-index: 200; overflow: hidden;
         }
 
-        /* Bottom */
-        .db-sb-bottom { padding:12px 16px; border-top:1px solid var(--border); position:relative; z-index:1; }
-        .db-user-row {
-          display:flex; align-items:center; gap:9px; padding:8px 10px;
-          border-radius:8px; cursor:pointer; transition:background .2s;
-        }
-        .db-user-row:hover { background:var(--surface-hover); }
-        .db-user-av {
-          width:30px; height:30px; border-radius:50%;
-          background:rgba(196,146,106,.2); border:1px solid rgba(196,146,106,.2);
-          display:flex; align-items:center; justify-content:center;
-          font-size:12px; font-weight:600; color:var(--accent); flex-shrink:0;
-        }
-        .db-user-name { flex:1; font-size:12px; color:var(--text-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .db-signout { background:none; border:none; cursor:pointer; color:var(--text-3); font-size:14px; padding:3px; transition:color .2s; }
-        .db-signout:hover { color:var(--text-2); }
-
-        /* ━━━━━ MAIN ━━━━━ */
-        .db-main { margin-left:var(--sidebar-w); flex:1; min-height:100vh; position:relative; overflow:hidden; }
-
-        /* Ambient background particles */
-        .db-particles { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; margin-left:var(--sidebar-w); }
-        .db-particle {
-          position:absolute; border-radius:50%;
-          animation:db-float linear infinite; opacity:0;
+        /* Subtle texture overlay */
+        .hs-sidebar::before {
+          content: '';
+          position: absolute; inset: 0;
+          background:
+            radial-gradient(ellipse 160% 60% at 50% 0%, rgba(196,114,74,.18) 0%, transparent 60%),
+            radial-gradient(ellipse 120% 40% at 20% 100%, rgba(196,114,74,.10) 0%, transparent 50%);
+          pointer-events: none;
         }
 
-        /* Ambient glow orbs */
-        .db-glow-orb {
-          position:fixed; border-radius:50%; pointer-events:none; z-index:0;
-          filter:blur(90px); animation:db-glow-pulse ease-in-out infinite;
-          transition:all 1.5s ease;
+        /* ── Brand ── */
+        .hs-brand {
+          padding: 28px 24px 22px;
+          border-bottom: 1px solid rgba(255,255,255,.07);
+          position: relative; z-index: 1;
+          flex-shrink: 0;
+        }
+        .hs-logo {
+          display: flex; align-items: center; gap: 11px;
+          font-family: var(--font-serif);
+          font-size: 21px; font-weight: 700;
+          color: rgba(250,247,242,0.96);
+          letter-spacing: -.2px; margin-bottom: 3px;
+        }
+        .hs-logo-mark {
+          width: 34px; height: 34px;
+          background: linear-gradient(135deg, var(--terra) 0%, #E8956A 100%);
+          border-radius: 10px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 16px;
+          box-shadow: 0 4px 12px rgba(196,114,74,.4);
+          flex-shrink: 0;
+        }
+        .hs-tagline {
+          font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase;
+          color: rgba(250,247,242,.28); padding-left: 45px;
+        }
+
+        /* ── Child profile card ── */
+        .hs-profile {
+          padding: 20px 20px 0;
+          position: relative; z-index: 1;
+          flex-shrink: 0;
+        }
+        .hs-profile-card {
+          background: rgba(255,255,255,.06);
+          border: 1px solid rgba(255,255,255,.09);
+          border-radius: var(--r-md);
+          padding: 16px;
+          cursor: pointer;
+          transition: background .2s, border-color .2s;
+        }
+        .hs-profile-card:hover {
+          background: rgba(255,255,255,.10);
+          border-color: rgba(196,114,74,.4);
+        }
+        .hs-profile-top {
+          display: flex; align-items: center; gap: 13px;
+          margin-bottom: 14px;
+        }
+        .hs-avatar-wrap { position: relative; flex-shrink: 0; }
+        .hs-avatar {
+          width: 50px; height: 50px; border-radius: 50%;
+          background: linear-gradient(135deg, rgba(196,114,74,.5), rgba(196,114,74,.2));
+          display: flex; align-items: center; justify-content: center;
+          font-size: 22px; overflow: hidden;
+          animation: hs-avatar-ring 5s ease-in-out infinite;
+        }
+        .hs-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .hs-avatar-edit {
+          position: absolute; bottom: -2px; right: -2px;
+          width: 18px; height: 18px; border-radius: 50%;
+          background: var(--terra); border: 2px solid var(--espresso);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 8px; color: white;
+        }
+        .hs-child-name {
+          font-family: var(--font-serif);
+          font-size: 18px; font-weight: 600;
+          color: rgba(250,247,242,.95); line-height: 1.2;
+        }
+        .hs-child-age { font-size: 11px; color: rgba(250,247,242,.38); margin-top: 2px; }
+
+        /* Mini stats in profile card */
+        .hs-profile-stats {
+          display: grid; grid-template-columns: repeat(3,1fr);
+          gap: 1px; background: rgba(255,255,255,.07);
+          border-radius: 8px; overflow: hidden;
+        }
+        .hs-ps {
+          background: rgba(0,0,0,.15);
+          padding: 9px 6px; text-align: center;
+        }
+        .hs-ps-n {
+          font-family: var(--font-serif);
+          font-size: 18px; font-weight: 500;
+          color: rgba(250,247,242,.9); line-height: 1;
+        }
+        .hs-ps-l {
+          font-size: 8.5px; letter-spacing: 1.5px; text-transform: uppercase;
+          color: rgba(250,247,242,.3); margin-top: 3px;
+        }
+
+        /* ── Nav ── */
+        .hs-nav {
+          flex: 1; padding: 10px 14px;
+          position: relative; z-index: 1;
+          overflow-y: auto;
+        }
+        .hs-nav-label {
+          font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+          color: rgba(250,247,242,.22); padding: 18px 8px 7px;
+          font-weight: 600;
+        }
+        .hs-nav-item {
+          display: flex; align-items: center; gap: 10px;
+          width: 100%; padding: 10px 12px; border-radius: var(--r-sm);
+          border: none; background: none; cursor: pointer;
+          font-family: var(--font-sans); font-size: 13.5px; font-weight: 400;
+          color: rgba(250,247,242,.45); text-align: left;
+          transition: all .18s; margin-bottom: 1px;
+          position: relative; overflow: hidden;
+        }
+        .hs-nav-item:hover {
+          background: rgba(255,255,255,.08);
+          color: rgba(250,247,242,.8);
+        }
+        .hs-nav-item.active {
+          background: rgba(196,114,74,.2);
+          color: rgba(250,247,242,.95);
+          font-weight: 500;
+        }
+        .hs-nav-item.active::before {
+          content: '';
+          position: absolute; left: 0; top: 20%; bottom: 20%;
+          width: 3px; border-radius: 0 3px 3px 0;
+          background: var(--terra);
+        }
+        .hs-nav-icon {
+          width: 28px; height: 28px; border-radius: 8px;
+          background: rgba(255,255,255,.06);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 13px; flex-shrink: 0;
+          transition: background .18s;
+        }
+        .hs-nav-item.active .hs-nav-icon { background: rgba(196,114,74,.25); }
+        .hs-nav-badge {
+          margin-left: auto;
+          background: var(--terra); color: white;
+          font-size: 10px; font-weight: 600;
+          padding: 2px 7px; border-radius: 20px;
+          min-width: 20px; text-align: center;
+        }
+
+        /* ── Bottom user ── */
+        .hs-sb-bottom {
+          padding: 12px 14px 16px;
+          border-top: 1px solid rgba(255,255,255,.06);
+          position: relative; z-index: 1; flex-shrink: 0;
+        }
+        .hs-user-row {
+          display: flex; align-items: center; gap: 10px;
+          padding: 9px 10px; border-radius: var(--r-sm);
+          transition: background .2s; cursor: default;
+        }
+        .hs-user-row:hover { background: rgba(255,255,255,.07); }
+        .hs-user-av {
+          width: 32px; height: 32px; border-radius: 50%;
+          background: rgba(196,114,74,.3); border: 1.5px solid rgba(196,114,74,.4);
+          display: flex; align-items: center; justify-content: center;
+          font-family: var(--font-serif); font-size: 13px; font-weight: 600;
+          color: rgba(250,247,242,.8); flex-shrink: 0;
+        }
+        .hs-user-name {
+          flex: 1; font-size: 12.5px; color: rgba(250,247,242,.45);
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .hs-signout {
+          background: none; border: none; cursor: pointer;
+          color: rgba(250,247,242,.25); font-size: 14px; padding: 3px;
+          transition: color .2s; line-height: 1;
+        }
+        .hs-signout:hover { color: rgba(250,247,242,.6); }
+
+        /* ═══════════════════════════════════════════════════
+           MAIN CONTENT
+        ═══════════════════════════════════════════════════ */
+        .hs-main {
+          margin-left: var(--sidebar-w);
+          flex: 1; min-height: 100vh;
+          background: var(--ivory);
+          display: flex; flex-direction: column;
         }
 
         /* ── Topbar ── */
-        .db-topbar {
-          position:sticky; top:0; z-index:50;
-          background:rgba(12,9,6,.85); backdrop-filter:blur(20px) saturate(180%);
-          border-bottom:1px solid var(--border);
-          padding:0 36px; height:60px;
-          display:flex; align-items:center; justify-content:space-between;
+        .hs-topbar {
+          height: var(--topbar-h);
+          background: rgba(250,247,242,.92);
+          backdrop-filter: blur(20px) saturate(150%);
+          -webkit-backdrop-filter: blur(20px) saturate(150%);
+          border-bottom: 1px solid rgba(44,26,14,.07);
+          padding: 0 44px;
+          display: flex; align-items: center; justify-content: space-between;
+          position: sticky; top: 0; z-index: 100;
         }
-        .db-greeting {
-          font-family:var(--font-serif); font-size:16px; font-weight:300;
-          color:var(--text-2);
+        .hs-greeting {
+          font-family: var(--font-serif);
+          font-size: 15px; font-weight: 400;
+          color: var(--ink-3);
+          display: flex; align-items: center; gap: 6px;
         }
-        .db-greeting em { font-style:italic; color:var(--accent); }
-        .db-topbar-right { display:flex; gap:8px; align-items:center; }
+        .hs-greeting em { font-style: italic; color: var(--terra); font-weight: 500; }
+        .hs-topbar-actions { display: flex; gap: 8px; align-items: center; }
 
-        .db-btn-ghost {
-          background:transparent; color:var(--text-2);
-          border:1px solid var(--border); border-radius:40px;
-          padding:8px 18px; font-family:var(--font-sans);
-          font-size:11.5px; font-weight:400; letter-spacing:.8px;
-          cursor:pointer; transition:all .25s; white-space:nowrap;
-          display:flex; align-items:center; gap:6px;
+        /* Buttons */
+        .btn-ghost {
+          background: transparent; color: var(--ink-3);
+          border: 1.5px solid var(--ivory-3); border-radius: 40px;
+          padding: 8px 18px; font-family: var(--font-sans); font-size: 12px;
+          font-weight: 500; cursor: pointer; transition: all .2s;
+          display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
         }
-        .db-btn-ghost:hover { border-color:var(--accent); color:var(--accent); }
+        .btn-ghost:hover {
+          border-color: var(--terra); color: var(--terra);
+          background: var(--terra-light);
+        }
+        .btn-primary {
+          background: var(--espresso); color: rgba(250,247,242,.95);
+          border: none; border-radius: 40px;
+          padding: 9px 22px; font-family: var(--font-sans); font-size: 12px;
+          font-weight: 500; letter-spacing: .6px; cursor: pointer;
+          transition: all .25s; display: inline-flex; align-items: center; gap: 7px;
+          white-space: nowrap;
+          box-shadow: 0 2px 8px rgba(44,26,14,.2);
+        }
+        .btn-primary:hover {
+          background: var(--terra);
+          box-shadow: 0 4px 20px rgba(196,114,74,.4);
+          transform: translateY(-1px);
+        }
+        .btn-primary:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
 
-        .db-btn-solid {
-          background:var(--accent); color:#0C0906;
-          border:none; border-radius:40px;
-          padding:8px 20px; font-family:var(--font-sans);
-          font-size:11.5px; font-weight:500; letter-spacing:1px;
-          text-transform:uppercase; cursor:pointer; transition:all .25s;
-          display:flex; align-items:center; gap:6px; white-space:nowrap;
-        }
-        .db-btn-solid:hover { background:var(--gold); transform:translateY(-1px); box-shadow:0 4px 20px rgba(196,146,106,.35); }
-        .db-btn-solid:disabled { opacity:.4; cursor:not-allowed; transform:none; box-shadow:none; }
-
-        /* ── Content ── */
-        .db-content { padding:36px 40px; max-width:1060px; position:relative; z-index:1; }
-
-        /* ── Section labels ── */
-        .db-section-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
-        .db-section-label {
-          font-size:9.5px; letter-spacing:3.5px; text-transform:uppercase;
-          color:var(--accent); font-weight:500;
-          display:flex; align-items:center; gap:10px;
-        }
-        .db-section-label::before { content:''; width:18px; height:1px; background:var(--accent); border-radius:2px; }
-        .db-section-link { font-size:11.5px; color:var(--text-3); cursor:pointer; background:none; border:none; font-family:var(--font-sans); transition:color .2s; }
-        .db-section-link:hover { color:var(--accent); }
-
-        /* ── Hero Story Card ── */
-        .db-hero {
-          position:relative; border-radius:var(--radius); overflow:hidden;
-          padding:36px 44px; margin-bottom:28px;
-          background:linear-gradient(135deg, #1A0F06 0%, #2A1A0C 45%, #1E1408 100%);
-          border:1px solid rgba(196,146,106,.12);
-          cursor:pointer; transition:all .3s; width:100%; text-align:left;
-        }
-        .db-hero:hover { border-color:rgba(196,146,106,.3); transform:translateY(-2px); box-shadow:0 16px 60px rgba(0,0,0,.5); }
-        .db-hero:disabled { opacity:.6; cursor:not-allowed; transform:none; }
-        .db-hero-orb1 {
-          position:absolute; top:-60px; right:-60px;
-          width:240px; height:240px; border-radius:50%;
-          background:radial-gradient(circle,rgba(196,146,106,.1),transparent);
-          pointer-events:none;
-        }
-        .db-hero-orb2 {
-          position:absolute; bottom:-80px; left:35%;
-          width:300px; height:300px; border-radius:50%;
-          background:radial-gradient(circle,rgba(196,146,106,.06),transparent);
-          pointer-events:none;
-        }
-        .db-hero-eyebrow {
-          font-size:9.5px; letter-spacing:3.5px; text-transform:uppercase;
-          color:rgba(196,146,106,.45); margin-bottom:10px; position:relative; z-index:1;
-        }
-        .db-hero-title {
-          font-family:var(--font-serif); font-size:clamp(22px,2.8vw,32px); font-weight:300;
-          color:var(--text); line-height:1.3; position:relative; z-index:1;
-        }
-        .db-hero-title em { font-style:italic; color:var(--accent); }
-        .db-hero-sub {
-          font-size:12.5px; color:var(--text-3); margin-top:8px;
-          position:relative; z-index:1;
-        }
-        .db-hero-arrow {
-          position:absolute; right:36px; top:50%; transform:translateY(-50%);
-          font-size:26px; color:rgba(196,146,106,.2);
-          transition:all .3s; z-index:1;
-        }
-        .db-hero:hover .db-hero-arrow { color:rgba(196,146,106,.7); transform:translateY(-50%) translateX(5px); }
-        .db-hero-spinner {
-          width:16px; height:16px; border-radius:50%;
-          border:2px solid rgba(196,146,106,.2); border-top-color:var(--accent);
-          animation:db-spin .8s linear infinite;
+        /* ── Content area ── */
+        .hs-content {
+          padding: 44px 44px 60px;
+          max-width: 1100px;
         }
 
-        /* ── Stat cards ── */
-        .db-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:28px; }
-        .db-stat-card {
-          background:var(--surface); border:1px solid var(--border);
-          border-radius:var(--radius-sm); padding:20px 18px;
-          transition:all .25s; position:relative; overflow:hidden;
+        /* Section labels */
+        .hs-section-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+        .hs-section-label {
+          font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+          color: var(--terra); font-weight: 600;
+          display: flex; align-items: center; gap: 10px;
         }
-        .db-stat-card:hover { border-color:var(--border-h); background:var(--surface-hover); }
-        .db-stat-card-icon { font-size:18px; margin-bottom:10px; opacity:.7; }
-        .db-stat-card-num {
-          font-family:var(--font-serif); font-size:34px; font-weight:300;
-          color:var(--text); line-height:1; margin-bottom:4px;
+        .hs-section-label::before {
+          content: ''; width: 20px; height: 1.5px;
+          background: currentColor; border-radius: 2px; flex-shrink: 0;
         }
-        .db-stat-card-lbl { font-size:10px; color:var(--text-3); letter-spacing:1.5px; text-transform:uppercase; }
+        .hs-section-link {
+          font-size: 12px; color: var(--ink-4); cursor: pointer;
+          background: none; border: none; font-family: var(--font-sans);
+          transition: color .2s;
+        }
+        .hs-section-link:hover { color: var(--terra); }
 
-        /* ── Action cards ── */
-        .db-actions-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:28px; }
-        .db-action-card {
-          background:var(--surface); border:1px solid var(--border);
-          border-radius:var(--radius-sm); padding:22px 20px;
-          cursor:pointer; transition:all .25s;
-          display:flex; flex-direction:column; gap:10px;
-          position:relative; overflow:hidden;
+        /* ── Stagger animation container ── */
+        .hs-stagger > * {
+          opacity: 0;
+          animation: hs-stagger-in .5s cubic-bezier(.22,.68,0,1.2) forwards;
         }
-        .db-action-card::after {
-          content:''; position:absolute; inset:0;
-          background:linear-gradient(135deg, rgba(196,146,106,.06), transparent);
-          opacity:0; transition:opacity .3s;
-        }
-        .db-action-card:hover { border-color:rgba(196,146,106,.25); transform:translateY(-3px); box-shadow:0 8px 32px rgba(0,0,0,.4); }
-        .db-action-card:hover::after { opacity:1; }
-        .db-action-shine {
-          position:absolute; top:0; left:-80%; width:45%; height:100%;
-          background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent);
-          transform:skewX(-15deg);
-        }
-        .db-action-card:hover .db-action-shine { animation:db-shimmer .6s ease; }
-        .db-action-icon {
-          width:38px; height:38px; border-radius:9px;
-          display:flex; align-items:center; justify-content:center; font-size:17px;
-        }
-        .db-action-title { font-family:var(--font-serif); font-size:15.5px; font-weight:600; color:var(--text); }
-        .db-action-desc { font-size:12px; color:var(--text-3); line-height:1.55; }
+        .hs-stagger > *:nth-child(1) { animation-delay: .04s; }
+        .hs-stagger > *:nth-child(2) { animation-delay: .10s; }
+        .hs-stagger > *:nth-child(3) { animation-delay: .16s; }
+        .hs-stagger > *:nth-child(4) { animation-delay: .22s; }
+        .hs-stagger > *:nth-child(5) { animation-delay: .28s; }
+        .hs-stagger > *:nth-child(6) { animation-delay: .34s; }
 
-        /* ── Memory feed ── */
-        .db-memory-feed { display:flex; flex-direction:column; gap:10px; }
-        .db-memory-item {
-          display:flex; background:var(--surface); border:1px solid var(--border);
-          border-radius:var(--radius-sm); overflow:hidden; transition:all .22s;
+        /* ═══════════════════════════════════════════════════
+           HERO — Story card
+        ═══════════════════════════════════════════════════ */
+        .hs-hero {
+          position: relative; overflow: hidden;
+          border-radius: var(--r-lg);
+          padding: 44px 52px 44px 52px;
+          margin-bottom: 36px;
+          background: var(--espresso);
+          border: none; cursor: pointer; width: 100%; text-align: left;
+          transition: transform .3s cubic-bezier(.22,.68,0,1.2), box-shadow .3s;
+          box-shadow: var(--shadow-lg);
         }
-        .db-memory-item:hover { border-color:var(--border-h); box-shadow:0 4px 20px rgba(0,0,0,.3); transform:translateX(3px); }
-        .db-memory-stripe {
-          width:3px; flex-shrink:0;
-          background:linear-gradient(180deg, rgba(196,146,106,.8), rgba(196,146,106,.2), rgba(196,146,106,.5));
+        .hs-hero:hover {
+          transform: translateY(-3px);
+          box-shadow: var(--shadow-xl);
         }
-        .db-memory-body { flex:1; padding:16px 20px; min-width:0; }
-        .db-memory-meta { display:flex; align-items:center; gap:10px; margin-bottom:7px; }
-        .db-memory-author {
-          font-size:9px; letter-spacing:2px; text-transform:uppercase;
-          color:var(--accent); font-weight:600;
-          background:rgba(196,146,106,.1); padding:3px 9px; border-radius:20px;
-        }
-        .db-memory-date { font-size:11px; color:var(--text-3); }
-        .db-memory-text {
-          font-family:var(--font-serif); font-size:16px; font-style:italic;
-          color:var(--text-2); line-height:1.7;
-        }
-        .db-memory-thumb { width:88px; flex-shrink:0; object-fit:cover; }
+        .hs-hero:disabled { opacity: .65; cursor: not-allowed; transform: none; box-shadow: var(--shadow-md); }
 
-        /* ── Empty state ── */
-        .db-empty {
-          text-align:center; padding:52px 32px;
-          background:var(--surface); border-radius:var(--radius);
-          border:1px dashed rgba(196,146,106,.12);
-        }
-        .db-empty-icon { font-size:40px; margin-bottom:14px; opacity:.5; }
-        .db-empty-title { font-family:var(--font-serif); font-size:22px; font-weight:300; color:var(--text); margin-bottom:8px; }
-        .db-empty-desc { font-size:13px; color:var(--text-3); line-height:1.65; }
-
-        /* ── Setup screen ── */
-        .db-setup-wrap { display:flex; align-items:center; justify-content:center; flex:1; min-height:calc(100vh - 60px); padding:48px; }
-        .db-setup-card {
-          background:rgba(255,255,255,.03); border:1px solid var(--border);
-          border-radius:24px; padding:64px 52px; text-align:center;
-          max-width:440px; width:100%;
-          box-shadow:0 40px 80px rgba(0,0,0,.5);
-          animation:db-card-in .6s ease both;
-        }
-        .db-setup-emoji { font-size:52px; margin-bottom:20px; }
-        .db-setup-title { font-family:var(--font-serif); font-size:32px; font-weight:300; color:var(--text); margin-bottom:12px; }
-        .db-setup-title em { font-style:italic; color:var(--accent); }
-        .db-setup-desc { font-size:14px; color:var(--text-2); margin-bottom:32px; line-height:1.75; }
-
-        /* ── Staggered animations for home view ── */
-        .db-stagger > * { animation:db-card-in .5s ease both; }
-        .db-stagger > *:nth-child(1) { animation-delay:.05s; }
-        .db-stagger > *:nth-child(2) { animation-delay:.12s; }
-        .db-stagger > *:nth-child(3) { animation-delay:.19s; }
-        .db-stagger > *:nth-child(4) { animation-delay:.26s; }
-        .db-stagger > *:nth-child(5) { animation-delay:.33s; }
-
-        /* ── Modal ── */
-        .db-overlay {
-          position:fixed; inset:0; background:rgba(0,0,0,.75);
-          backdrop-filter:blur(16px); display:flex;
-          align-items:center; justify-content:center;
-          z-index:300; padding:24px;
-          animation:db-fadein .2s ease;
-        }
-        .db-modal {
-          background:#12100D; border:1px solid rgba(196,146,106,.12);
-          border-radius:20px; padding:40px; width:100%; max-width:480px;
-          box-shadow:0 40px 80px rgba(0,0,0,.6);
-          max-height:92vh; overflow-y:auto;
-          animation:db-card-in .3s ease both;
-        }
-        .db-modal-bar {
-          height:2px; border-radius:2px 2px 0 0;
-          background:linear-gradient(90deg,var(--accent),rgba(196,146,106,.3),var(--accent));
-          margin:-40px -40px 32px;
-        }
-        .db-modal-title { font-family:var(--font-serif); font-size:28px; font-weight:300; color:var(--text); margin-bottom:6px; }
-        .db-modal-title em { font-style:italic; color:var(--accent); }
-        .db-modal-desc { font-size:13px; color:var(--text-2); margin-bottom:26px; line-height:1.65; }
-        .db-f-label { display:block; font-size:9.5px; letter-spacing:2.5px; text-transform:uppercase; color:var(--text-3); margin-bottom:7px; }
-        .db-f-input {
-          width:100%; padding:12px 15px;
-          background:rgba(255,255,255,.05); border:1px solid rgba(196,146,106,.15);
-          border-radius:9px; font-family:var(--font-sans);
-          font-size:14px; color:var(--text); outline:none;
-          transition:all .25s; margin-bottom:16px;
-        }
-        .db-f-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(196,146,106,.1); }
-        .db-f-textarea {
-          width:100%; padding:12px 15px;
-          background:rgba(255,255,255,.05); border:1px solid rgba(196,146,106,.15);
-          border-radius:9px; font-family:var(--font-serif);
-          font-size:16.5px; font-style:italic; color:var(--text); outline:none;
-          resize:none; min-height:125px; line-height:1.7;
-          transition:all .25s; margin-bottom:16px;
-        }
-        .db-f-textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(196,146,106,.1); }
-        .db-f-textarea::placeholder { color:rgba(196,146,106,.25); }
-        .db-f-upload {
-          display:flex; flex-direction:column; align-items:center;
-          justify-content:center; gap:8px; padding:26px;
-          border:1.5px dashed rgba(196,146,106,.2); border-radius:9px;
-          background:rgba(255,255,255,.02); cursor:pointer;
-          color:var(--text-3); font-size:13px;
-          transition:all .25s; margin-bottom:16px;
-        }
-        .db-f-upload:hover { border-color:rgba(196,146,106,.5); color:var(--accent); background:rgba(196,146,106,.04); }
-        .db-modal-btns { display:flex; gap:10px; }
-        .db-btn-modal-save {
-          flex:1; padding:12px; background:var(--accent); color:#0C0906;
-          border:none; border-radius:9px; font-family:var(--font-sans);
-          font-size:11.5px; font-weight:500; letter-spacing:1.5px;
-          text-transform:uppercase; cursor:pointer; transition:all .25s;
-        }
-        .db-btn-modal-save:hover { background:var(--gold); }
-        .db-btn-modal-save:disabled { opacity:.4; cursor:not-allowed; }
-        .db-btn-modal-cancel {
-          padding:12px 20px; background:transparent; color:var(--text-2);
-          border:1px solid rgba(196,146,106,.15); border-radius:9px;
-          font-family:var(--font-sans); font-size:12px; cursor:pointer; transition:all .25s;
-        }
-        .db-btn-modal-cancel:hover { border-color:var(--accent); color:var(--accent); }
-
-        .db-cartoon-spinner {
-          width:44px; height:44px; border-radius:50%;
-          border:2.5px solid rgba(196,146,106,.15); border-top-color:var(--accent);
-          animation:db-spin 1s linear infinite; margin:0 auto 14px;
-        }
-        .db-invite-code {
-          background:rgba(255,255,255,.04); border-radius:9px; padding:14px;
-          margin-bottom:14px; font-size:12px; color:var(--text-2);
-          word-break:break-all; font-family:monospace; line-height:1.5;
-          border:1px solid rgba(196,146,106,.12);
+        /* Hero background texture */
+        .hs-hero::before {
+          content: '';
+          position: absolute; inset: 0;
+          background:
+            radial-gradient(ellipse 80% 80% at 80% 20%, rgba(196,114,74,.25) 0%, transparent 55%),
+            radial-gradient(ellipse 60% 60% at 0% 80%, rgba(196,114,74,.12) 0%, transparent 50%);
+          pointer-events: none;
         }
 
-        @media (max-width:900px) {
-          :root { --sidebar-w:230px; }
-          .db-content { padding:24px; }
-          .db-topbar { padding:0 24px; }
-          .db-stats-grid { grid-template-columns:repeat(2,1fr); }
-          .db-actions-grid { grid-template-columns:repeat(2,1fr); }
+        /* Decorative line pattern */
+        .hs-hero::after {
+          content: '';
+          position: absolute; top: 0; right: 0;
+          width: 240px; height: 240px;
+          background-image: radial-gradient(circle, rgba(255,255,255,.06) 1px, transparent 1px);
+          background-size: 18px 18px;
+          border-radius: 0 var(--r-lg) 0 0;
+          pointer-events: none;
         }
-        @media (max-width:680px) {
-          .db-sidebar { display:none; }
-          .db-main { margin-left:0; }
-          .db-particles { margin-left:0; }
-          .db-stats-grid { grid-template-columns:repeat(2,1fr); }
-          .db-actions-grid { grid-template-columns:1fr; }
+
+        .hs-hero-eyebrow {
+          font-size: 9.5px; letter-spacing: 3.5px; text-transform: uppercase;
+          color: rgba(196,114,74,.7); margin-bottom: 12px;
+          position: relative; z-index: 1;
+          display: flex; align-items: center; gap: 8px;
+        }
+        .hs-hero-dot {
+          width: 6px; height: 6px; border-radius: 50%;
+          background: var(--terra);
+          animation: hs-dot-pulse 2.5s ease infinite;
+        }
+        .hs-hero-title {
+          font-family: var(--font-serif);
+          font-size: clamp(24px, 3vw, 34px);
+          font-weight: 600; line-height: 1.2;
+          color: rgba(250,247,242,.95);
+          position: relative; z-index: 1;
+          margin-bottom: 10px;
+        }
+        .hs-hero-title em { font-style: italic; color: #E8956A; }
+        .hs-hero-sub {
+          font-size: 13px; color: rgba(250,247,242,.42);
+          position: relative; z-index: 1; line-height: 1.6;
+        }
+        .hs-hero-cta {
+          position: relative; z-index: 1;
+          display: inline-flex; align-items: center; gap: 10px;
+          margin-top: 24px;
+          background: rgba(255,255,255,.10);
+          border: 1px solid rgba(255,255,255,.16);
+          border-radius: 40px; padding: 10px 22px;
+          font-family: var(--font-sans); font-size: 12.5px; font-weight: 500;
+          color: rgba(250,247,242,.88);
+          transition: all .25s;
+        }
+        .hs-hero:hover .hs-hero-cta {
+          background: rgba(196,114,74,.35);
+          border-color: rgba(196,114,74,.5);
+          color: rgba(250,247,242,.98);
+        }
+        .hs-hero-arrow { transition: transform .25s; }
+        .hs-hero:hover .hs-hero-arrow { transform: translateX(4px); }
+
+        /* Avatar in hero corner */
+        .hs-hero-avatar {
+          position: absolute; right: 52px; top: 50%;
+          transform: translateY(-50%);
+          width: 88px; height: 88px; border-radius: 50%;
+          overflow: hidden;
+          border: 3px solid rgba(255,255,255,.15);
+          box-shadow: 0 8px 32px rgba(0,0,0,.3);
+          z-index: 1;
+          animation: hs-hero-float 4s ease-in-out infinite;
+        }
+        .hs-hero-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .hs-hero-avatar-empty {
+          width: 100%; height: 100%;
+          background: rgba(196,114,74,.2);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 36px;
+        }
+
+        .hs-hero-spinner {
+          width: 18px; height: 18px; border-radius: 50%;
+          border: 2px solid rgba(250,247,242,.2);
+          border-top-color: rgba(250,247,242,.8);
+          animation: hs-spin .8s linear infinite;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           STAT CARDS
+        ═══════════════════════════════════════════════════ */
+        .hs-stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 36px; }
+        .hs-stat-card {
+          background: var(--white);
+          border: 1px solid var(--ivory-3);
+          border-radius: var(--r-md); padding: 22px 20px;
+          transition: all .25s; position: relative; overflow: hidden;
+        }
+        .hs-stat-card:hover {
+          border-color: var(--parchment);
+          box-shadow: var(--shadow-sm);
+          transform: translateY(-1px);
+        }
+        .hs-stat-card::after {
+          content: '';
+          position: absolute; bottom: 0; left: 0; right: 0;
+          height: 3px; border-radius: 0 0 var(--r-md) var(--r-md);
+          background: linear-gradient(90deg, var(--terra) 0%, var(--blush) 100%);
+          transform: scaleX(0);
+          transition: transform .3s cubic-bezier(.22,.68,0,1.2);
+          transform-origin: left;
+        }
+        .hs-stat-card:hover::after { transform: scaleX(1); }
+        .hs-stat-icon { font-size: 20px; margin-bottom: 12px; }
+        .hs-stat-num {
+          font-family: var(--font-serif);
+          font-size: 38px; font-weight: 500;
+          color: var(--ink); line-height: 1; margin-bottom: 5px;
+          letter-spacing: -1px;
+        }
+        .hs-stat-lbl {
+          font-size: 10.5px; color: var(--ink-4);
+          letter-spacing: 1.5px; text-transform: uppercase;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           ACTION CARDS
+        ═══════════════════════════════════════════════════ */
+        .hs-actions-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 36px; }
+        .hs-action-card {
+          background: var(--white);
+          border: 1.5px solid var(--ivory-3);
+          border-radius: var(--r-md); padding: 24px 22px;
+          cursor: pointer; transition: all .25s;
+          display: flex; flex-direction: column; gap: 11px;
+          position: relative; overflow: hidden;
+        }
+        .hs-action-card:hover {
+          border-color: var(--terra);
+          box-shadow: 0 8px 32px rgba(196,114,74,.12), var(--shadow-sm);
+          transform: translateY(-3px);
+        }
+
+        /* Shimmer on hover */
+        .hs-action-card::after {
+          content: ''; position: absolute;
+          top: 0; left: -80%; width: 50%; height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
+          transform: skewX(-12deg);
+        }
+        .hs-action-card:hover::after { animation: hs-shimmer .55s ease; }
+
+        .hs-action-icon {
+          width: 42px; height: 42px; border-radius: var(--r-sm);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 19px;
+        }
+        .hs-action-title {
+          font-family: var(--font-serif);
+          font-size: 16px; font-weight: 600; color: var(--ink);
+          line-height: 1.25;
+        }
+        .hs-action-desc { font-size: 12.5px; color: var(--ink-4); line-height: 1.6; }
+        .hs-action-arrow {
+          margin-top: auto; font-size: 13px; color: var(--terra);
+          opacity: 0; transform: translateX(-4px);
+          transition: all .2s;
+        }
+        .hs-action-card:hover .hs-action-arrow { opacity: 1; transform: translateX(0); }
+
+        /* ═══════════════════════════════════════════════════
+           MEMORY FEED
+        ═══════════════════════════════════════════════════ */
+        .hs-memory-feed { display: flex; flex-direction: column; gap: 12px; }
+        .hs-memory-item {
+          background: var(--white);
+          border: 1px solid var(--ivory-3);
+          border-radius: var(--r-md);
+          display: flex; overflow: hidden;
+          transition: all .22s;
+        }
+        .hs-memory-item:hover {
+          border-color: var(--parchment);
+          box-shadow: var(--shadow-sm);
+          transform: translateX(3px);
+        }
+        .hs-memory-accent {
+          width: 4px; flex-shrink: 0;
+          background: linear-gradient(180deg, var(--terra) 0%, var(--blush) 50%, var(--sage) 100%);
+        }
+        .hs-memory-body { flex: 1; padding: 18px 22px; min-width: 0; }
+        .hs-memory-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+        .hs-author-pill {
+          font-size: 9.5px; letter-spacing: 1.8px; text-transform: uppercase;
+          color: var(--terra); font-weight: 600;
+          background: var(--terra-light); padding: 3px 10px; border-radius: 20px;
+        }
+        .hs-memory-date { font-size: 11.5px; color: var(--ink-4); }
+        .hs-memory-text {
+          font-family: var(--font-serif); font-size: 16.5px; font-style: italic;
+          color: var(--ink-2); line-height: 1.8;
+        }
+        .hs-memory-photo { width: 100px; flex-shrink: 0; object-fit: cover; }
+
+        /* ═══════════════════════════════════════════════════
+           EMPTY STATES
+        ═══════════════════════════════════════════════════ */
+        .hs-empty {
+          text-align: center; padding: 64px 40px;
+          border: 1.5px dashed var(--parchment);
+          border-radius: var(--r-lg);
+          background: linear-gradient(135deg, var(--white) 0%, var(--ivory) 100%);
+        }
+        .hs-empty-icon { font-size: 44px; margin-bottom: 16px; opacity: .6; }
+        .hs-empty-title {
+          font-family: var(--font-serif); font-size: 22px; font-weight: 500;
+          color: var(--ink); margin-bottom: 10px;
+        }
+        .hs-empty-desc { font-size: 14px; color: var(--ink-4); line-height: 1.7; max-width: 380px; margin: 0 auto; }
+
+        /* ═══════════════════════════════════════════════════
+           SETUP / ONBOARDING SCREEN
+        ═══════════════════════════════════════════════════ */
+        .hs-setup-wrap {
+          flex: 1; display: flex; align-items: center; justify-content: center;
+          padding: 48px 44px; min-height: calc(100vh - var(--topbar-h));
+        }
+        .hs-setup-card {
+          background: var(--white);
+          border: 1px solid var(--ivory-3);
+          border-radius: var(--r-xl);
+          padding: 64px 56px; text-align: center;
+          max-width: 460px; width: 100%;
+          box-shadow: var(--shadow-xl);
+          animation: hs-pop .6s cubic-bezier(.22,.68,0,1.2) both;
+          position: relative; overflow: hidden;
+        }
+        .hs-setup-card::before {
+          content: '';
+          position: absolute; top: 0; left: 0; right: 0; height: 4px;
+          background: linear-gradient(90deg, var(--terra), var(--blush), var(--sage));
+        }
+        .hs-setup-icon { font-size: 56px; margin-bottom: 22px; display: block; animation: hs-breathe 3s ease-in-out infinite; }
+        .hs-setup-title {
+          font-family: var(--font-serif); font-size: 32px; font-weight: 600;
+          color: var(--ink); margin-bottom: 12px; line-height: 1.2;
+        }
+        .hs-setup-title em { font-style: italic; color: var(--terra); }
+        .hs-setup-desc { font-size: 14.5px; color: var(--ink-3); margin-bottom: 36px; line-height: 1.75; }
+
+        /* ═══════════════════════════════════════════════════
+           MODAL SYSTEM
+        ═══════════════════════════════════════════════════ */
+        .hs-overlay {
+          position: fixed; inset: 0;
+          background: rgba(44,26,14,.45);
+          backdrop-filter: blur(12px) saturate(140%);
+          -webkit-backdrop-filter: blur(12px) saturate(140%);
+          display: flex; align-items: center; justify-content: center;
+          z-index: 1000; padding: 24px;
+          animation: hs-fadein .22s ease;
+        }
+        .hs-modal {
+          background: var(--white);
+          border: 1px solid var(--ivory-3);
+          border-radius: var(--r-xl);
+          padding: 0; width: 100%; max-width: 500px;
+          max-height: 92vh; overflow-y: auto;
+          box-shadow: var(--shadow-xl);
+          animation: hs-pop .3s cubic-bezier(.22,.68,0,1.2) both;
+          position: relative;
+        }
+        .hs-modal-header {
+          padding: 36px 40px 0;
+          position: sticky; top: 0;
+          background: var(--white);
+          border-bottom: 1px solid transparent;
+        }
+        .hs-modal-header-bar {
+          height: 3px; border-radius: 3px 3px 0 0;
+          margin: -36px -40px 28px;
+          background: linear-gradient(90deg, var(--terra), var(--blush));
+        }
+        .hs-modal-title {
+          font-family: var(--font-serif);
+          font-size: 26px; font-weight: 600; color: var(--ink); margin-bottom: 6px;
+        }
+        .hs-modal-title em { font-style: italic; color: var(--terra); }
+        .hs-modal-desc { font-size: 13.5px; color: var(--ink-3); margin-bottom: 0; line-height: 1.65; }
+        .hs-modal-body { padding: 24px 40px 40px; }
+
+        /* Form elements */
+        .hs-label {
+          display: block; font-size: 10px; letter-spacing: 2.5px;
+          text-transform: uppercase; color: var(--ink-3); font-weight: 600;
+          margin-bottom: 8px;
+        }
+        .hs-input {
+          width: 100%; padding: 12px 15px;
+          background: var(--ivory); border: 1.5px solid var(--ivory-3);
+          border-radius: var(--r-sm);
+          font-family: var(--font-sans); font-size: 14px; color: var(--ink);
+          outline: none; transition: all .22s; margin-bottom: 18px;
+        }
+        .hs-input:focus {
+          border-color: var(--terra); background: var(--white);
+          box-shadow: 0 0 0 4px rgba(196,114,74,.08);
+        }
+        .hs-textarea {
+          width: 100%; padding: 14px 16px;
+          background: var(--ivory); border: 1.5px solid var(--ivory-3);
+          border-radius: var(--r-sm);
+          font-family: var(--font-serif); font-style: italic;
+          font-size: 16px; color: var(--ink);
+          outline: none; resize: none; min-height: 130px; line-height: 1.75;
+          transition: all .22s; margin-bottom: 18px;
+        }
+        .hs-textarea:focus {
+          border-color: var(--terra); background: var(--white);
+          box-shadow: 0 0 0 4px rgba(196,114,74,.08);
+        }
+        .hs-textarea::placeholder { color: var(--ink-5); font-style: italic; }
+
+        /* Photo upload */
+        .hs-upload-zone {
+          display: flex; flex-direction: column; align-items: center;
+          justify-content: center; gap: 9px;
+          padding: 28px; border: 2px dashed var(--parchment);
+          border-radius: var(--r-md);
+          background: var(--ivory); cursor: pointer;
+          transition: all .25s; margin-bottom: 18px;
+          text-align: center;
+        }
+        .hs-upload-zone:hover {
+          border-color: var(--terra);
+          background: var(--terra-light);
+        }
+        .hs-upload-icon { font-size: 28px; opacity: .5; }
+        .hs-upload-label { font-size: 13px; color: var(--ink-3); font-weight: 500; }
+        .hs-upload-hint { font-size: 11px; color: var(--ink-5); }
+
+        /* Modal buttons */
+        .hs-modal-actions { display: flex; gap: 10px; margin-top: 4px; }
+        .hs-btn-save {
+          flex: 1; padding: 13px; background: var(--espresso); color: rgba(250,247,242,.95);
+          border: none; border-radius: 12px; font-family: var(--font-sans);
+          font-size: 12px; font-weight: 600; letter-spacing: 1px;
+          text-transform: uppercase; cursor: pointer; transition: all .25s;
+        }
+        .hs-btn-save:hover { background: var(--terra); box-shadow: 0 4px 16px rgba(196,114,74,.35); }
+        .hs-btn-save:disabled { opacity: .4; cursor: not-allowed; }
+        .hs-btn-cancel {
+          padding: 13px 22px; background: transparent;
+          border: 1.5px solid var(--ivory-3); border-radius: 12px;
+          font-family: var(--font-sans); font-size: 13px; color: var(--ink-3);
+          cursor: pointer; transition: all .22s;
+        }
+        .hs-btn-cancel:hover { border-color: var(--parchment); color: var(--ink-2); }
+
+        /* Invite code box */
+        .hs-invite-box {
+          background: var(--ivory); border: 1.5px solid var(--parchment);
+          border-radius: var(--r-sm); padding: 14px 16px;
+          font-family: monospace; font-size: 12px; color: var(--ink-2);
+          word-break: break-all; line-height: 1.6; margin-bottom: 16px;
+        }
+
+        /* Cartoon modal */
+        .hs-cartoon-spinner {
+          width: 48px; height: 48px; border-radius: 50%;
+          border: 3px solid var(--parchment); border-top-color: var(--terra);
+          animation: hs-spin 1s linear infinite; margin: 0 auto 16px;
+        }
+        .hs-transform-row {
+          display: flex; align-items: center; justify-content: center;
+          gap: 20px; padding: 16px 0 24px;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           STORY VIEW special card
+        ═══════════════════════════════════════════════════ */
+        .hs-story-book-card {
+          background: var(--white);
+          border: 1px solid var(--ivory-3);
+          border-radius: var(--r-lg); padding: 56px 48px;
+          text-align: center;
+          box-shadow: var(--shadow-md);
+        }
+        .hs-story-book-title {
+          font-family: var(--font-serif); font-size: 38px; font-weight: 600;
+          color: var(--ink); margin-bottom: 8px; line-height: 1.2;
+        }
+        .hs-story-book-sub { font-size: 13px; color: var(--ink-4); margin-bottom: 32px; }
+
+        /* ═══════════════════════════════════════════════════
+           RESPONSIVE
+        ═══════════════════════════════════════════════════ */
+        @media (max-width: 1024px) {
+          :root { --sidebar-w: 250px; }
+          .hs-content { padding: 32px 32px 48px; }
+          .hs-topbar { padding: 0 32px; }
+          .hs-stats-grid { grid-template-columns: repeat(2,1fr); }
+        }
+        @media (max-width: 768px) {
+          .hs-sidebar { display: none; }
+          .hs-main { margin-left: 0; }
+          .hs-actions-grid { grid-template-columns: 1fr 1fr; }
+          .hs-stats-grid { grid-template-columns: repeat(2,1fr); }
+          .hs-content { padding: 24px 20px; }
+          .hs-topbar { padding: 0 20px; }
+          .hs-hero { padding: 32px 28px; }
+          .hs-hero-avatar { display: none; }
+        }
+        @media (max-width: 500px) {
+          .hs-actions-grid { grid-template-columns: 1fr; }
         }
       `}</style>
 
-      <div className="db-layout">
+      <div className="hs-layout">
 
-        {/* ━━━━━ BACKGROUND PARTICLES ━━━━━ */}
-        <div className="db-particles">
-          {Array.from({ length: 20 }, (_, i) => (
-            <div key={i} className="db-particle" style={{
-              left: `${4 + (i * 41) % 93}%`,
-              width: `${2 + (i * 2) % 3}px`,
-              height: `${2 + (i * 2) % 3}px`,
-              background: `rgba(196,146,106,${0.12 + (i % 5) * 0.06})`,
-              animationDuration: `${9 + (i * 2.4) % 13}s`,
-              animationDelay: `${(i * 1.9) % 11}s`,
-            }} />
-          ))}
-        </div>
-
-        {/* Ambient glow orbs */}
-        <div className="db-glow-orb" style={{ width:500, height:500, background:'radial-gradient(circle, rgba(196,146,106,0.06), transparent)', top:'-100px', right:'0px', animationDuration:'8s' }} />
-        <div className="db-glow-orb" style={{ width:400, height:400, background:'radial-gradient(circle, rgba(196,146,106,0.04), transparent)', bottom:'-80px', right:'20%', animationDuration:'11s', animationDelay:'3s' }} />
-
-        {/* ━━━━━ SIDEBAR ━━━━━ */}
-        <aside className="db-sidebar">
-          <div className="db-sb-glow1" /><div className="db-sb-glow2" />
-
+        {/* ═══════════════════════════════════════
+            SIDEBAR
+        ═══════════════════════════════════════ */}
+        <aside className="hs-sidebar">
           {/* Brand */}
-          <div className="db-brand">
-            <div className="db-logo">
-              <div className="db-logo-icon">📖</div>
+          <div className="hs-brand">
+            <div className="hs-logo">
+              <div className="hs-logo-mark">📖</div>
               Hemsaga
             </div>
-            <div className="db-tagline">Family Stories Forever</div>
+            <div className="hs-tagline">Family Stories Forever</div>
           </div>
 
           {child ? (
             <>
               {/* Profile */}
-              <div className="db-profile" style={{ paddingBottom: '0', marginBottom: '0' }}>
-                <div className="db-profile-btn" onClick={() => setShowCartoonModal(true)}>
-                  <div className="db-avatar-wrap">
-                    <div className="db-avatar">
-                      {childCartoonUrl ? <img src={childCartoonUrl} alt={child.name} /> : <span>🌟</span>}
+              <div className="hs-profile" style={{ paddingTop: '20px' }}>
+                <div className="hs-profile-card" onClick={() => setShowCartoonModal(true)}>
+                  <div className="hs-profile-top">
+                    <div className="hs-avatar-wrap">
+                      <div className="hs-avatar">
+                        {childCartoonUrl ? <img src={childCartoonUrl} alt={child.name} /> : <span>🌟</span>}
+                      </div>
+                      <div className="hs-avatar-edit">✎</div>
                     </div>
-                    <div className="db-avatar-ring" />
-                    <div className="db-avatar-edit">✎</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="hs-child-name">{child.name}</div>
+                      <div className="hs-child-age">{getAge(child.birthday)}</div>
+                    </div>
                   </div>
-                  <div style={{ minWidth:0 }}>
-                    <div className="db-child-name">{child.name}</div>
-                    <div className="db-child-sub">{getAge(child.birthday)}</div>
+                  <div className="hs-profile-stats">
+                    <div className="hs-ps">
+                      <div className="hs-ps-n">{memories.length}</div>
+                      <div className="hs-ps-l">Memories</div>
+                    </div>
+                    <div className="hs-ps">
+                      <div className="hs-ps-n">{Math.ceil(memories.length / 5) || 0}</div>
+                      <div className="hs-ps-l">Chapters</div>
+                    </div>
+                    <div className="hs-ps">
+                      <div className="hs-ps-n">{getDaysOld(child.birthday)}</div>
+                      <div className="hs-ps-l">Days</div>
+                    </div>
                   </div>
-                </div>
-              </div>
-
-              {/* Stats strip */}
-              <div className="db-stats" style={{ margin: '0 18px 14px' }}>
-                <div className="db-stat">
-                  <div className="db-stat-n">{memories.length}</div>
-                  <div className="db-stat-l">Memories</div>
-                </div>
-                <div className="db-stat-div" />
-                <div className="db-stat">
-                  <div className="db-stat-n">{Math.ceil(memories.length / 5) || 0}</div>
-                  <div className="db-stat-l">Chapters</div>
-                </div>
-                <div className="db-stat-div" />
-                <div className="db-stat">
-                  <div className="db-stat-n">{getDaysOld(child.birthday)}</div>
-                  <div className="db-stat-l">Days</div>
                 </div>
               </div>
 
               {/* Nav */}
-              <nav className="db-nav">
-                <div className="db-nav-section">Views</div>
+              <nav className="hs-nav">
+                <div className="hs-nav-label">Views</div>
                 {[
-                  { id:'home', icon:'⌂', label:'Dashboard' },
-                  { id:'memories', icon:'🌸', label:'Memories', badge: memories.length || null },
-                  { id:'story', icon:'📖', label:'Our Story' },
+                  { id: 'home',     icon: '⌂',  label: 'Dashboard' },
+                  { id: 'memories', icon: '🌸', label: 'Memories', badge: memories.length || null },
+                  { id: 'story',    icon: '📖', label: 'Our Story' },
                 ].map(n => (
-                  <button key={n.id} className={`db-nav-item ${activeView === n.id ? 'active' : ''}`} onClick={() => setActiveView(n.id)}>
-                    <span className="db-nav-icon">{n.icon}</span>
+                  <button
+                    key={n.id}
+                    className={`hs-nav-item ${activeView === n.id ? 'active' : ''}`}
+                    onClick={() => setActiveView(n.id)}
+                  >
+                    <span className="hs-nav-icon">{n.icon}</span>
                     {n.label}
-                    {n.badge && <span className="db-nav-badge">{n.badge}</span>}
+                    {n.badge && <span className="hs-nav-badge">{n.badge}</span>}
                   </button>
                 ))}
 
-                <div className="db-nav-section" style={{ marginTop:'8px' }}>Actions</div>
-                <button className="db-nav-item" onClick={() => setShowAddMemory(true)}>
-                  <span className="db-nav-icon">✦</span> Add Memory
+                <div className="hs-nav-label" style={{ marginTop: '8px' }}>Actions</div>
+                <button className="hs-nav-item" onClick={() => setShowAddMemory(true)}>
+                  <span className="hs-nav-icon">✦</span> Add Memory
                 </button>
-                <button className="db-nav-item" onClick={() => { setShowInviteModal(true); setInviteLink(''); }}>
-                  <span className="db-nav-icon">👨‍👩‍👧</span> Invite Family
+                <button className="hs-nav-item" onClick={() => { setShowInviteModal(true); setInviteLink(''); }}>
+                  <span className="hs-nav-icon">👨‍👩‍👧</span> Invite Family
                 </button>
-                <button className="db-nav-item" onClick={() => setShowCartoonModal(true)}>
-                  <span className="db-nav-icon">🎨</span> Cartoon Avatar
+                <button className="hs-nav-item" onClick={() => setShowCartoonModal(true)}>
+                  <span className="hs-nav-icon">🎨</span> Cartoon Avatar
                 </button>
               </nav>
             </>
           ) : (
-            <div className="db-nav">
-              <p style={{ fontSize:'12px', color:'var(--text-3)', lineHeight:'1.7', padding:'8px' }}>
+            <div className="hs-nav">
+              <p style={{ fontSize: '12.5px', color: 'rgba(250,247,242,.3)', lineHeight: '1.75', padding: '8px', marginTop: '16px' }}>
                 Add your child's profile to begin their story.
               </p>
             </div>
           )}
 
-          <div className="db-sb-bottom">
-            <div className="db-user-row">
-              <div className="db-user-av">{userName[0].toUpperCase()}</div>
-              <span className="db-user-name">{userName}</span>
-              <button className="db-signout" onClick={async () => { await supabase.auth.signOut(); router.push('/auth'); }}>↪</button>
+          {/* User row */}
+          <div className="hs-sb-bottom">
+            <div className="hs-user-row">
+              <div className="hs-user-av">{userName[0].toUpperCase()}</div>
+              <span className="hs-user-name">{userName}</span>
+              <button className="hs-signout" title="Sign out"
+                onClick={async () => { await supabase.auth.signOut(); router.push('/auth'); }}>
+                ↪
+              </button>
             </div>
           </div>
         </aside>
 
-        {/* ━━━━━ MAIN ━━━━━ */}
-        <div className="db-main">
+        {/* ═══════════════════════════════════════
+            MAIN
+        ═══════════════════════════════════════ */}
+        <div className="hs-main">
 
           {/* Topbar */}
-          <header className="db-topbar">
-            <span className="db-greeting">
+          <header className="hs-topbar">
+            <div className="hs-greeting">
               {child
-                ? <>{getGreeting()} — <em>{child.name}'s story</em> awaits</>
-                : <>Welcome to <em>Hemsaga</em></>}
-            </span>
-            <div className="db-topbar-right">
+                ? <>{getGreeting()} —&nbsp;<em>{child.name}'s story</em>&nbsp;awaits</>
+                : <>Welcome to&nbsp;<em>Hemsaga</em></>}
+            </div>
+            <div className="hs-topbar-actions">
               {child && (
                 <>
-                  <button className="db-btn-ghost" onClick={() => setShowAddMemory(true)}>+ Memory</button>
-                  <button className="db-btn-solid" onClick={() => generateStory(false)} disabled={generating || memories.length === 0}>
+                  <button className="btn-ghost" onClick={() => setShowAddMemory(true)}>
+                    + Memory
+                  </button>
+                  <button
+                    className="btn-primary"
+                    onClick={() => generateStory(false)}
+                    disabled={generating || memories.length === 0}
+                  >
                     {generating
-                      ? <><div className="db-hero-spinner" style={{ width:13, height:13, borderWidth:'1.5px' }} />Writing…</>
+                      ? <><div className="hs-hero-spinner" style={{ width: 13, height: 13, borderWidth: '1.5px' }} />Writing…</>
                       : <>✦ Generate Chapter</>}
                   </button>
                 </>
@@ -794,107 +1088,157 @@ export default function Dashboard() {
             </div>
           </header>
 
-          {/* No child */}
+          {/* No child yet */}
           {!child && (
-            <div className="db-setup-wrap">
-              <div className="db-setup-card">
-                <div className="db-setup-emoji">🌸</div>
-                <h1 className="db-setup-title">Add your <em>child's</em> profile</h1>
-                <p className="db-setup-desc">Their story starts the moment you add them here. Every memory you log becomes a chapter they'll treasure for life.</p>
-                <button className="db-btn-solid" style={{ margin:'0 auto', padding:'12px 32px' }} onClick={() => setShowAddChild(true)}>
+            <div className="hs-setup-wrap">
+              <div className="hs-setup-card">
+                <span className="hs-setup-icon">🌸</span>
+                <h1 className="hs-setup-title">Add your <em>child's</em> profile</h1>
+                <p className="hs-setup-desc">
+                  Their story starts the moment you add them here.<br />
+                  Every memory you log becomes a chapter they'll treasure for life.
+                </p>
+                <button
+                  className="btn-primary"
+                  style={{ margin: '0 auto', padding: '12px 36px', fontSize: '13px', borderRadius: '14px' }}
+                  onClick={() => setShowAddChild(true)}
+                >
                   Begin the Story →
                 </button>
               </div>
             </div>
           )}
 
-          {/* ━━━ HOME VIEW ━━━ */}
+          {/* ══ HOME VIEW ══ */}
           {child && activeView === 'home' && (
-            <div className="db-content db-stagger">
+            <div className="hs-content hs-stagger">
 
-              {/* Hero story button */}
-              <button className="db-hero" onClick={() => memories.length > 0 ? generateStory(false) : setShowAddMemory(true)} disabled={generating}>
-                <div className="db-hero-orb1" /><div className="db-hero-orb2" />
-                <div className="db-hero-eyebrow">AI Story Engine · Hemsaga</div>
+              {/* Hero card */}
+              <button
+                className="hs-hero"
+                onClick={() => memories.length > 0 ? generateStory(false) : setShowAddMemory(true)}
+                disabled={generating}
+              >
+                {/* Floating avatar */}
+                <div className="hs-hero-avatar">
+                  {childCartoonUrl
+                    ? <img src={childCartoonUrl} alt={child.name} />
+                    : <div className="hs-hero-avatar-empty">🌟</div>}
+                </div>
+
+                <div className="hs-hero-eyebrow">
+                  <div className="hs-hero-dot" />
+                  AI Story Engine · Hemsaga
+                </div>
                 {generating
-                  ? <div style={{ display:'flex', alignItems:'center', gap:12, position:'relative', zIndex:1 }}>
-                      <div className="db-hero-spinner" />
-                      <div className="db-hero-title">Writing {child.name}'s next chapter…</div>
+                  ? <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative', zIndex: 1 }}>
+                      <div className="hs-hero-spinner" />
+                      <div className="hs-hero-title">Writing {child.name}'s next chapter…</div>
                     </div>
                   : <>
-                      <div className="db-hero-title">
+                      <div className="hs-hero-title">
                         {memories.length === 0
-                          ? <>Start with <em>the first memory</em></>
+                          ? <>Start <em>{child.name}'s</em> story</>
                           : <>Continue <em>{child.name}'s</em> story</>}
                       </div>
-                      <div className="db-hero-sub">
+                      <div className="hs-hero-sub">
                         {memories.length === 0
-                          ? 'Every great story begins with a single moment'
-                          : `${memories.length} memories ready · Generate the next chapter`}
+                          ? 'Every great story begins with a single moment. Add the first memory.'
+                          : `${memories.length} ${memories.length === 1 ? 'memory' : 'memories'} ready · AI will weave them into the next chapter`}
                       </div>
-                      <div className="db-hero-arrow">→</div>
+                      <div className="hs-hero-cta">
+                        <span>{memories.length === 0 ? 'Add first memory' : 'Generate next chapter'}</span>
+                        <span className="hs-hero-arrow">→</span>
+                      </div>
                     </>}
               </button>
 
               {/* Stats */}
-              <div className="db-section-row"><span className="db-section-label">At a glance</span></div>
-              <div className="db-stats-grid" style={{ marginBottom:28 }}>
+              <div className="hs-section-row">
+                <span className="hs-section-label">At a glance</span>
+              </div>
+              <div className="hs-stats-grid">
                 {[
-                  { icon:'🌸', n:memories.length, l:'Memories' },
-                  { icon:'📖', n:Math.ceil(memories.length/5)||0, l:'Chapters' },
-                  { icon:'📅', n:getDaysOld(child.birthday), l:'Days old' },
-                  { icon:'💛', n:'∞', l:'Love given' },
-                ].map((s,i) => (
-                  <div key={i} className="db-stat-card">
-                    <div className="db-stat-card-icon">{s.icon}</div>
-                    <div className="db-stat-card-num">{s.n}</div>
-                    <div className="db-stat-card-lbl">{s.l}</div>
+                  { icon: '🌸', n: memories.length,                  l: 'Memories logged'  },
+                  { icon: '📖', n: Math.ceil(memories.length/5) || 0, l: 'Story chapters'   },
+                  { icon: '📅', n: getDaysOld(child.birthday),        l: 'Days of adventure' },
+                  { icon: '💛', n: '∞',                               l: 'Love stored'       },
+                ].map((s, i) => (
+                  <div key={i} className="hs-stat-card">
+                    <div className="hs-stat-icon">{s.icon}</div>
+                    <div className="hs-stat-num">{s.n}</div>
+                    <div className="hs-stat-lbl">{s.l}</div>
                   </div>
                 ))}
               </div>
 
               {/* Actions */}
-              <div className="db-section-row"><span className="db-section-label">Quick Actions</span></div>
-              <div className="db-actions-grid">
+              <div className="hs-section-row">
+                <span className="hs-section-label">Quick Actions</span>
+              </div>
+              <div className="hs-actions-grid">
                 {[
-                  { icon:'✍️', bg:'rgba(196,146,106,.12)', title:'Log a Memory', desc:`What happened with ${child.name} today?`, fn:() => setShowAddMemory(true) },
-                  { icon:'👨‍👩‍👧', bg:'rgba(100,146,160,.12)', title:'Invite Family', desc:'Share a magic link with grandparents', fn:() => { setShowInviteModal(true); setInviteLink(''); } },
-                  { icon:'🎨', bg:'rgba(160,100,196,.12)', title:'Cartoon Avatar', desc:childCartoonUrl ? 'Update the avatar' : 'Generate from photo', fn:() => setShowCartoonModal(true) },
-                ].map((a,i) => (
-                  <div key={i} className="db-action-card" onClick={a.fn}>
-                    <div className="db-action-shine" />
-                    <div className="db-action-icon" style={{ background:a.bg }}>{a.icon}</div>
-                    <div className="db-action-title">{a.title}</div>
-                    <div className="db-action-desc">{a.desc}</div>
+                  {
+                    icon: '✍️',
+                    bg: 'rgba(196,114,74,.12)',
+                    title: 'Log a Memory',
+                    desc: `What happened with ${child.name} today?`,
+                    fn: () => setShowAddMemory(true),
+                  },
+                  {
+                    icon: '👨‍👩‍👧',
+                    bg: 'rgba(122,158,126,.12)',
+                    title: 'Invite Family',
+                    desc: 'Share a link — grandparents can add memories too',
+                    fn: () => { setShowInviteModal(true); setInviteLink(''); },
+                  },
+                  {
+                    icon: '🎨',
+                    bg: 'rgba(212,165,160,.18)',
+                    title: 'Cartoon Avatar',
+                    desc: childCartoonUrl ? 'Update the avatar art' : 'Generate a Pixar-style portrait',
+                    fn: () => setShowCartoonModal(true),
+                  },
+                ].map((a, i) => (
+                  <div key={i} className="hs-action-card" onClick={a.fn}>
+                    <div className="hs-action-icon" style={{ background: a.bg }}>{a.icon}</div>
+                    <div className="hs-action-title">{a.title}</div>
+                    <div className="hs-action-desc">{a.desc}</div>
+                    <div className="hs-action-arrow">→</div>
                   </div>
                 ))}
               </div>
 
               {/* Recent memories */}
-              <div className="db-section-row">
-                <span className="db-section-label">Recent Memories</span>
-                {memories.length > 3 && <button className="db-section-link" onClick={() => setActiveView('memories')}>View all →</button>}
+              <div className="hs-section-row">
+                <span className="hs-section-label">Recent Memories</span>
+                {memories.length > 4 && (
+                  <button className="hs-section-link" onClick={() => setActiveView('memories')}>View all →</button>
+                )}
               </div>
 
               {memories.length === 0 ? (
-                <div className="db-empty">
-                  <div className="db-empty-icon">🌸</div>
-                  <div className="db-empty-title">The first memory is waiting</div>
-                  <div className="db-empty-desc">Even the smallest moment becomes part of {child.name}'s story.<br />What happened today?</div>
+                <div className="hs-empty">
+                  <div className="hs-empty-icon">🌸</div>
+                  <div className="hs-empty-title">The first memory is waiting</div>
+                  <div className="hs-empty-desc">
+                    Even the smallest moment becomes part of {child.name}'s story forever.<br />
+                    What happened today?
+                  </div>
                 </div>
               ) : (
-                <div className="db-memory-feed">
-                  {memories.slice(0,4).map(m => (
-                    <div key={m.id} className="db-memory-item">
-                      <div className="db-memory-stripe" />
-                      <div className="db-memory-body">
-                        <div className="db-memory-meta">
-                          <span className="db-memory-author">{m.author}</span>
-                          <span className="db-memory-date">{formatShort(m.memory_date)}</span>
+                <div className="hs-memory-feed">
+                  {memories.slice(0, 4).map(m => (
+                    <div key={m.id} className="hs-memory-item">
+                      <div className="hs-memory-accent" />
+                      <div className="hs-memory-body">
+                        <div className="hs-memory-meta">
+                          <span className="hs-author-pill">{m.author}</span>
+                          <span className="hs-memory-date">{formatShort(m.memory_date)}</span>
                         </div>
-                        <div className="db-memory-text">{m.content}</div>
+                        <div className="hs-memory-text">{m.content}</div>
                       </div>
-                      {m.photo_url && <img src={m.photo_url} alt="" className="db-memory-thumb" />}
+                      {m.photo_url && <img src={m.photo_url} alt="" className="hs-memory-photo" />}
                     </div>
                   ))}
                 </div>
@@ -902,32 +1246,33 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ━━━ MEMORIES VIEW ━━━ */}
+          {/* ══ MEMORIES VIEW ══ */}
           {child && activeView === 'memories' && (
-            <div className="db-content db-stagger">
-              <div className="db-section-row">
-                <span className="db-section-label">All Memories · {memories.length}</span>
-                <button className="db-btn-ghost" style={{ fontSize:'11px', padding:'7px 14px' }} onClick={() => setShowAddMemory(true)}>+ Add</button>
+            <div className="hs-content hs-stagger">
+              <div className="hs-section-row">
+                <span className="hs-section-label">All Memories · {memories.length}</span>
+                <button className="btn-ghost" style={{ fontSize: '11.5px', padding: '7px 14px' }} onClick={() => setShowAddMemory(true)}>+ Add Memory</button>
               </div>
+
               {memories.length === 0 ? (
-                <div className="db-empty">
-                  <div className="db-empty-icon">🌸</div>
-                  <div className="db-empty-title">No memories yet</div>
-                  <div className="db-empty-desc">Start logging moments — big or small, they all matter.</div>
+                <div className="hs-empty">
+                  <div className="hs-empty-icon">🌸</div>
+                  <div className="hs-empty-title">No memories yet</div>
+                  <div className="hs-empty-desc">Start logging moments for {child.name} — big or small, they all matter.</div>
                 </div>
               ) : (
-                <div className="db-memory-feed">
+                <div className="hs-memory-feed">
                   {memories.map(m => (
-                    <div key={m.id} className="db-memory-item">
-                      <div className="db-memory-stripe" />
-                      <div className="db-memory-body">
-                        <div className="db-memory-meta">
-                          <span className="db-memory-author">{m.author}</span>
-                          <span className="db-memory-date">{formatDate(m.memory_date)}</span>
+                    <div key={m.id} className="hs-memory-item">
+                      <div className="hs-memory-accent" />
+                      <div className="hs-memory-body">
+                        <div className="hs-memory-meta">
+                          <span className="hs-author-pill">{m.author}</span>
+                          <span className="hs-memory-date">{formatDate(m.memory_date)}</span>
                         </div>
-                        <div className="db-memory-text">{m.content}</div>
+                        <div className="hs-memory-text">{m.content}</div>
                       </div>
-                      {m.photo_url && <img src={m.photo_url} alt="" className="db-memory-thumb" />}
+                      {m.photo_url && <img src={m.photo_url} alt="" className="hs-memory-photo" />}
                     </div>
                   ))}
                 </div>
@@ -935,40 +1280,72 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ━━━ STORY VIEW ━━━ */}
+          {/* ══ STORY VIEW ══ */}
           {child && activeView === 'story' && (
-            <div className="db-content db-stagger">
-              <div className="db-section-row"><span className="db-section-label">The Story of {child.name}</span></div>
+            <div className="hs-content hs-stagger">
+              <div className="hs-section-row">
+                <span className="hs-section-label">The Story of {child.name}</span>
+              </div>
 
-              <button className="db-hero" onClick={() => generateStory(false)} disabled={generating || memories.length === 0} style={{ marginBottom:28 }}>
-                <div className="db-hero-orb1" /><div className="db-hero-orb2" />
-                <div className="db-hero-eyebrow">Continue the novel</div>
+              {/* Hero banner */}
+              <button
+                className="hs-hero"
+                onClick={() => generateStory(false)}
+                disabled={generating || memories.length === 0}
+                style={{ marginBottom: 28 }}
+              >
+                <div className="hs-hero-avatar">
+                  {childCartoonUrl
+                    ? <img src={childCartoonUrl} alt={child.name} />
+                    : <div className="hs-hero-avatar-empty">📖</div>}
+                </div>
+                <div className="hs-hero-eyebrow">
+                  <div className="hs-hero-dot" />
+                  Living family novel
+                </div>
                 {generating
                   ? <div style={{ display:'flex', alignItems:'center', gap:12, position:'relative', zIndex:1 }}>
-                      <div className="db-hero-spinner" />
-                      <div className="db-hero-title">Writing the next chapter…</div>
+                      <div className="hs-hero-spinner" />
+                      <div className="hs-hero-title">Writing the next chapter…</div>
                     </div>
                   : <>
-                      <div className="db-hero-title">Add a new <em>chapter</em></div>
-                      <div className="db-hero-sub">{memories.length} memories to weave into the story</div>
-                      <div className="db-hero-arrow">→</div>
+                      <div className="hs-hero-title">Add a new <em>chapter</em></div>
+                      <div className="hs-hero-sub">{memories.length} {memories.length === 1 ? 'memory' : 'memories'} to weave into the story</div>
+                      <div className="hs-hero-cta">
+                        <span>Continue the novel</span>
+                        <span className="hs-hero-arrow">→</span>
+                      </div>
                     </>}
               </button>
 
               {memories.length === 0 ? (
-                <div className="db-empty">
-                  <div className="db-empty-icon">📖</div>
-                  <div className="db-empty-title">No chapters yet</div>
-                  <div className="db-empty-desc">Add some memories first, then let AI weave them into {child.name}'s story.</div>
+                <div className="hs-empty">
+                  <div className="hs-empty-icon">📖</div>
+                  <div className="hs-empty-title">No chapters yet</div>
+                  <div className="hs-empty-desc">Add some memories first, then let AI weave them into {child.name}'s story.</div>
                 </div>
               ) : (
-                <div style={{ background:'var(--surface)', borderRadius:'var(--radius)', padding:'48px', border:'1px solid var(--border)', textAlign:'center' }}>
+                <div className="hs-story-book-card">
                   {childCartoonUrl && (
-                    <img src={childCartoonUrl} alt={child.name} style={{ width:72, height:72, borderRadius:'50%', objectFit:'cover', border:'2px solid rgba(196,146,106,.3)', display:'block', margin:'0 auto 20px', animation:'db-avatar-glow 4s ease-in-out infinite' }} />
+                    <img
+                      src={childCartoonUrl}
+                      alt={child.name}
+                      style={{
+                        width: 80, height: 80, borderRadius: '50%', objectFit: 'cover',
+                        border: '3px solid var(--parchment)',
+                        display: 'block', margin: '0 auto 20px',
+                        animation: 'hs-breathe 4s ease-in-out infinite'
+                      }}
+                    />
                   )}
-                  <div style={{ fontFamily:'var(--font-serif)', fontSize:'34px', fontWeight:300, color:'var(--text)', marginBottom:8 }}>{child.name}'s Story</div>
-                  <div style={{ fontSize:'12.5px', color:'var(--text-3)', marginBottom:28 }}>{memories.length} memories · A growing family novel</div>
-                  <button className="db-btn-solid" style={{ margin:'0 auto' }} onClick={() => generateStory(false)} disabled={generating}>
+                  <div className="hs-story-book-title">{child.name}'s Story</div>
+                  <div className="hs-story-book-sub">{memories.length} memories · A growing family novel</div>
+                  <button
+                    className="btn-primary"
+                    style={{ margin: '0 auto', padding: '12px 36px', borderRadius: '14px' }}
+                    onClick={() => generateStory(false)}
+                    disabled={generating}
+                  >
                     {generating ? '✦ Writing…' : '✦ Read & Add Chapter'}
                   </button>
                 </div>
@@ -978,143 +1355,217 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ━━━━━ ADD CHILD MODAL ━━━━━ */}
+      {/* ═══════════════════════════════════════
+          MODAL: Add Child
+      ═══════════════════════════════════════ */}
       {showAddChild && (
-        <div className="db-overlay">
-          <div className="db-modal">
-            <div className="db-modal-bar" />
-            <h2 className="db-modal-title">Add your <em>child</em></h2>
-            <p className="db-modal-desc">Their story starts the moment you add them here.</p>
-            <label className="db-f-label">Child's Name</label>
-            <input className="db-f-input" placeholder="e.g. Ivaan" value={childName} onChange={e => setChildName(e.target.value)} />
-            <label className="db-f-label">Birthday</label>
-            <input className="db-f-input" type="date" value={childBirthday} onChange={e => setChildBirthday(e.target.value)} />
-            <div className="db-modal-btns">
-              <button className="db-btn-modal-save" onClick={saveChild} disabled={saving}>{saving ? 'Saving…' : 'Create Profile →'}</button>
-              <button className="db-btn-modal-cancel" onClick={() => setShowAddChild(false)}>Cancel</button>
+        <div className="hs-overlay">
+          <div className="hs-modal">
+            <div className="hs-modal-header">
+              <div className="hs-modal-header-bar" />
+              <h2 className="hs-modal-title">Add your <em>child</em></h2>
+              <p className="hs-modal-desc">Their story starts the moment you add them here.</p>
+            </div>
+            <div className="hs-modal-body">
+              <label className="hs-label">Child's Name</label>
+              <input className="hs-input" placeholder="e.g. Ivaan" value={childName} onChange={e => setChildName(e.target.value)} />
+              <label className="hs-label">Birthday</label>
+              <input className="hs-input" type="date" value={childBirthday} onChange={e => setChildBirthday(e.target.value)} />
+              <div className="hs-modal-actions">
+                <button className="hs-btn-save" onClick={saveChild} disabled={saving || !childName || !childBirthday}>
+                  {saving ? 'Creating…' : 'Create Profile →'}
+                </button>
+                <button className="hs-btn-cancel" onClick={() => setShowAddChild(false)}>Cancel</button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ━━━━━ ADD MEMORY MODAL ━━━━━ */}
+      {/* ═══════════════════════════════════════
+          MODAL: Add Memory
+      ═══════════════════════════════════════ */}
       {showAddMemory && (
-        <div className="db-overlay" onClick={() => setShowAddMemory(false)}>
-          <div className="db-modal" onClick={e => e.stopPropagation()}>
-            <div className="db-modal-bar" />
-            <h2 className="db-modal-title">Log a <em>memory</em></h2>
-            <p className="db-modal-desc">Even the smallest moment becomes part of {child?.name}'s story forever.</p>
-            <label className="db-f-label">Who is logging this?</label>
-            <input className="db-f-input" placeholder="Papa, Mama, Nana…" value={memoryAuthor} onChange={e => setMemoryAuthor(e.target.value)} />
-            <label className="db-f-label">What happened?</label>
-            <textarea className="db-f-textarea" placeholder={`e.g. ${child?.name} stood up all by herself today and just grinned at me…`} value={memoryText} onChange={e => setMemoryText(e.target.value)} />
-            <label className="db-f-label">Photo (optional)</label>
-            {memoryPhotoPreview ? (
-              <div style={{ position:'relative', marginBottom:16 }}>
-                <img src={memoryPhotoPreview} alt="Preview" style={{ width:'100%', maxHeight:190, objectFit:'cover', borderRadius:9 }} />
-                <button onClick={() => { setMemoryPhoto(null); setMemoryPhotoPreview(null); }}
-                  style={{ position:'absolute', top:8, right:8, background:'rgba(0,0,0,.65)', color:'white', border:'none', borderRadius:'50%', width:26, height:26, cursor:'pointer', fontSize:15, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+        <div className="hs-overlay" onClick={() => setShowAddMemory(false)}>
+          <div className="hs-modal" onClick={e => e.stopPropagation()}>
+            <div className="hs-modal-header">
+              <div className="hs-modal-header-bar" />
+              <h2 className="hs-modal-title">Log a <em>memory</em></h2>
+              <p className="hs-modal-desc">Even the smallest moment becomes part of {child?.name}'s story forever.</p>
+            </div>
+            <div className="hs-modal-body">
+              <label className="hs-label">Who is logging this?</label>
+              <input
+                className="hs-input"
+                placeholder="Papa, Mama, Nana…"
+                value={memoryAuthor}
+                onChange={e => setMemoryAuthor(e.target.value)}
+              />
+              <label className="hs-label">What happened?</label>
+              <textarea
+                className="hs-textarea"
+                placeholder={`e.g. ${child?.name} took her first steps today — she walked right towards me and grinned…`}
+                value={memoryText}
+                onChange={e => setMemoryText(e.target.value)}
+              />
+              <label className="hs-label">Photo (optional)</label>
+              {memoryPhotoPreview ? (
+                <div style={{ position: 'relative', marginBottom: 18 }}>
+                  <img
+                    src={memoryPhotoPreview} alt="Preview"
+                    style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 12 }}
+                  />
+                  <button
+                    onClick={() => { setMemoryPhoto(null); setMemoryPhotoPreview(null); }}
+                    style={{
+                      position: 'absolute', top: 8, right: 8,
+                      background: 'rgba(44,26,14,.7)', color: 'white', border: 'none',
+                      borderRadius: '50%', width: 28, height: 28, cursor: 'pointer',
+                      fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}
+                  >×</button>
+                </div>
+              ) : (
+                <label className="hs-upload-zone">
+                  <div className="hs-upload-icon">📷</div>
+                  <div className="hs-upload-label">Tap to add a photo</div>
+                  <div className="hs-upload-hint">JPG, PNG up to 10MB</div>
+                  <input
+                    type="file" accept="image/*" style={{ display: 'none' }}
+                    onChange={e => {
+                      const f = e.target.files[0];
+                      if (!f) return;
+                      setMemoryPhoto(f); setMemoryPhotoPreview(URL.createObjectURL(f));
+                    }}
+                  />
+                </label>
+              )}
+              <div className="hs-modal-actions">
+                <button className="hs-btn-save" onClick={saveMemory} disabled={saving || !memoryText.trim()}>
+                  {saving ? 'Saving…' : 'Save Memory →'}
+                </button>
+                <button className="hs-btn-cancel" onClick={() => { setShowAddMemory(false); setMemoryPhoto(null); setMemoryPhotoPreview(null); }}>
+                  Cancel
+                </button>
               </div>
-            ) : (
-              <label className="db-f-upload">
-                <span style={{ fontSize:26 }}>📷</span>
-                <span>Tap to add a photo</span>
-                <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => { const f=e.target.files[0]; if(!f) return; setMemoryPhoto(f); setMemoryPhotoPreview(URL.createObjectURL(f)); }} />
-              </label>
-            )}
-            <div className="db-modal-btns">
-              <button className="db-btn-modal-save" onClick={saveMemory} disabled={saving}>{saving ? 'Saving…' : 'Save Memory →'}</button>
-              <button className="db-btn-modal-cancel" onClick={() => { setShowAddMemory(false); setMemoryPhoto(null); setMemoryPhotoPreview(null); }}>Cancel</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ━━━━━ CARTOON MODAL ━━━━━ */}
+      {/* ═══════════════════════════════════════
+          MODAL: Cartoon Avatar
+      ═══════════════════════════════════════ */}
       {showCartoonModal && (
-        <div className="db-overlay" onClick={() => { if(!cartoonizing){ setShowCartoonModal(false); setCartoonPhoto(null); setCartoonPhotoPreview(null); } }}>
-          <div className="db-modal" onClick={e => e.stopPropagation()}>
-            <div className="db-modal-bar" />
-            <h2 className="db-modal-title">🎨 Cartoon <em>Avatar</em></h2>
-            <p className="db-modal-desc">Transform a photo of {child?.name} into a beautiful Pixar-style illustration.</p>
-
-            {cartoonizing && (
-              <div style={{ textAlign:'center', padding:'32px 0' }}>
-                <div className="db-cartoon-spinner" />
-                <div style={{ fontFamily:'var(--font-serif)', fontSize:19, color:'var(--text)', marginBottom:6 }}>Creating {child?.name}'s cartoon…</div>
-                <div style={{ fontSize:12.5, color:'var(--text-3)' }}>This takes about 30–60 seconds ✨</div>
-              </div>
-            )}
-
-            {!cartoonizing && childCartoonUrl && !cartoonPhotoPreview && (
-              <div style={{ textAlign:'center' }}>
-                <img src={childCartoonUrl} alt="avatar" style={{ width:130, height:130, borderRadius:'50%', objectFit:'cover', border:'2px solid rgba(196,146,106,.3)', display:'block', margin:'0 auto 14px', animation:'db-avatar-glow 4s ease-in-out infinite' }} />
-                <p style={{ fontSize:12.5, color:'var(--text-3)', marginBottom:22 }}>{child?.name}'s current avatar</p>
-                <label className="db-f-upload">
-                  <span style={{ fontSize:20 }}>📷</span>
-                  <span>Upload a new photo to regenerate</span>
-                  <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => { const f=e.target.files[0]; if(!f) return; setCartoonPhoto(f); setCartoonPhotoPreview(URL.createObjectURL(f)); }} />
-                </label>
-                <button className="db-btn-modal-cancel" style={{ width:'100%' }} onClick={() => setShowCartoonModal(false)}>Close</button>
-              </div>
-            )}
-
-            {!cartoonizing && cartoonPhotoPreview && (
-              <>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:20, margin:'20px 0 24px' }}>
-                  <img src={cartoonPhotoPreview} alt="Original" style={{ width:105, height:105, borderRadius:'50%', objectFit:'cover', border:'2px solid rgba(196,146,106,.2)' }} />
-                  <span style={{ fontSize:22, color:'var(--accent)' }}>→</span>
-                  <div style={{ width:105, height:105, borderRadius:'50%', background:'rgba(196,146,106,.08)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px dashed rgba(196,146,106,.2)', fontSize:28 }}>✨</div>
+        <div className="hs-overlay" onClick={() => { if (!cartoonizing) { setShowCartoonModal(false); setCartoonPhoto(null); setCartoonPhotoPreview(null); } }}>
+          <div className="hs-modal" onClick={e => e.stopPropagation()}>
+            <div className="hs-modal-header">
+              <div className="hs-modal-header-bar" />
+              <h2 className="hs-modal-title">🎨 Cartoon <em>Avatar</em></h2>
+              <p className="hs-modal-desc">Transform a photo of {child?.name} into a beautiful Pixar-style illustration.</p>
+            </div>
+            <div className="hs-modal-body">
+              {cartoonizing && (
+                <div style={{ textAlign: 'center', padding: '36px 0' }}>
+                  <div className="hs-cartoon-spinner" />
+                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: 20, color: 'var(--ink)', marginBottom: 8 }}>
+                    Creating {child?.name}'s cartoon…
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--ink-4)' }}>This takes about 30–60 seconds ✨</div>
                 </div>
-                <div className="db-modal-btns">
-                  <button className="db-btn-modal-save" onClick={generateCartoon}>✨ Generate Cartoon</button>
-                  <button className="db-btn-modal-cancel" onClick={() => { setCartoonPhoto(null); setCartoonPhotoPreview(null); }}>Change Photo</button>
-                </div>
-              </>
-            )}
+              )}
 
-            {!cartoonizing && !childCartoonUrl && !cartoonPhotoPreview && (
-              <>
-                <label className="db-f-upload" style={{ padding:40 }}>
-                  <span style={{ fontSize:38 }}>📷</span>
-                  <span style={{ fontFamily:'var(--font-serif)', fontSize:16 }}>Upload a photo of {child?.name}</span>
-                  <span style={{ fontSize:11.5, color:'var(--text-3)', textAlign:'center' }}>Clear, front-facing photo works best</span>
-                  <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => { const f=e.target.files[0]; if(!f) return; setCartoonPhoto(f); setCartoonPhotoPreview(URL.createObjectURL(f)); }} />
-                </label>
-                <button className="db-btn-modal-cancel" style={{ width:'100%' }} onClick={() => setShowCartoonModal(false)}>Cancel</button>
-              </>
-            )}
+              {!cartoonizing && childCartoonUrl && !cartoonPhotoPreview && (
+                <div style={{ textAlign: 'center' }}>
+                  <img
+                    src={childCartoonUrl} alt="avatar"
+                    style={{ width: 130, height: 130, borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--parchment)', display: 'block', margin: '0 auto 14px', animation: 'hs-breathe 3s ease-in-out infinite' }}
+                  />
+                  <p style={{ fontSize: 13, color: 'var(--ink-4)', marginBottom: 24 }}>{child?.name}'s current avatar</p>
+                  <label className="hs-upload-zone">
+                    <div className="hs-upload-icon">📷</div>
+                    <div className="hs-upload-label">Upload a new photo to regenerate</div>
+                    <input type="file" accept="image/*" style={{ display: 'none' }}
+                      onChange={e => { const f=e.target.files[0]; if(!f) return; setCartoonPhoto(f); setCartoonPhotoPreview(URL.createObjectURL(f)); }} />
+                  </label>
+                  <button className="hs-btn-cancel" style={{ width: '100%' }} onClick={() => setShowCartoonModal(false)}>Close</button>
+                </div>
+              )}
+
+              {!cartoonizing && cartoonPhotoPreview && (
+                <>
+                  <div className="hs-transform-row">
+                    <img src={cartoonPhotoPreview} alt="Original"
+                      style={{ width: 110, height: 110, borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--parchment)' }} />
+                    <span style={{ fontSize: 24, color: 'var(--terra)' }}>→</span>
+                    <div style={{ width: 110, height: 110, borderRadius: '50%', background: 'var(--ivory-2)', border: '2px dashed var(--parchment)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>✨</div>
+                  </div>
+                  <div className="hs-modal-actions">
+                    <button className="hs-btn-save" onClick={generateCartoon}>✨ Generate Cartoon</button>
+                    <button className="hs-btn-cancel" onClick={() => { setCartoonPhoto(null); setCartoonPhotoPreview(null); }}>Change Photo</button>
+                  </div>
+                </>
+              )}
+
+              {!cartoonizing && !childCartoonUrl && !cartoonPhotoPreview && (
+                <>
+                  <label className="hs-upload-zone" style={{ padding: 44 }}>
+                    <div style={{ fontSize: 42 }}>📷</div>
+                    <div className="hs-upload-label" style={{ fontSize: 15 }}>Upload a photo of {child?.name}</div>
+                    <div className="hs-upload-hint">Clear, front-facing photo works best</div>
+                    <input type="file" accept="image/*" style={{ display: 'none' }}
+                      onChange={e => { const f=e.target.files[0]; if(!f) return; setCartoonPhoto(f); setCartoonPhotoPreview(URL.createObjectURL(f)); }} />
+                  </label>
+                  <button className="hs-btn-cancel" style={{ width: '100%' }} onClick={() => setShowCartoonModal(false)}>Cancel</button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* ━━━━━ INVITE MODAL ━━━━━ */}
+      {/* ═══════════════════════════════════════
+          MODAL: Invite Family
+      ═══════════════════════════════════════ */}
       {showInviteModal && (
-        <div className="db-overlay" onClick={() => setShowInviteModal(false)}>
-          <div className="db-modal" onClick={e => e.stopPropagation()}>
-            <div className="db-modal-bar" />
-            <h2 className="db-modal-title">Invite <em>Family</em></h2>
-            <p className="db-modal-desc">Share this link with grandparents — no account needed. They can add memories for {child?.name} directly.</p>
-            {!inviteLink ? (
-              <div className="db-modal-btns">
-                <button className="db-btn-modal-save" onClick={generateInviteLink}>Generate Invite Link</button>
-                <button className="db-btn-modal-cancel" onClick={() => setShowInviteModal(false)}>Cancel</button>
-              </div>
-            ) : (
-              <>
-                <div className="db-invite-code">{inviteLink}</div>
-                <div className="db-modal-btns">
-                  <button className="db-btn-modal-save" onClick={() => { navigator.clipboard.writeText(inviteLink); alert('Copied! Send it on WhatsApp 💙'); }}>📋 Copy Link</button>
-                  <button className="db-btn-modal-cancel" onClick={() => setShowInviteModal(false)}>Close</button>
+        <div className="hs-overlay" onClick={() => setShowInviteModal(false)}>
+          <div className="hs-modal" onClick={e => e.stopPropagation()}>
+            <div className="hs-modal-header">
+              <div className="hs-modal-header-bar" />
+              <h2 className="hs-modal-title">Invite <em>Family</em></h2>
+              <p className="hs-modal-desc">
+                Share this link with grandparents — no account needed.<br />
+                They can add memories for {child?.name} directly.
+              </p>
+            </div>
+            <div className="hs-modal-body">
+              {!inviteLink ? (
+                <div className="hs-modal-actions">
+                  <button className="hs-btn-save" onClick={generateInviteLink}>Generate Invite Link</button>
+                  <button className="hs-btn-cancel" onClick={() => setShowInviteModal(false)}>Cancel</button>
                 </div>
-                <p style={{ fontSize:11.5, color:'var(--text-3)', marginTop:12, textAlign:'center' }}>Anyone with this link can add memories for {child?.name}</p>
-              </>
-            )}
+              ) : (
+                <>
+                  <div className="hs-invite-box">{inviteLink}</div>
+                  <div className="hs-modal-actions">
+                    <button className="hs-btn-save" onClick={() => { navigator.clipboard.writeText(inviteLink); alert('Copied! Send it on WhatsApp 💙'); }}>
+                      📋 Copy Link
+                    </button>
+                    <button className="hs-btn-cancel" onClick={() => setShowInviteModal(false)}>Close</button>
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--ink-5)', marginTop: 14, textAlign: 'center' }}>
+                    Anyone with this link can add memories for {child?.name}
+                  </p>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* ━━━━━ STORY READER ━━━━━ */}
+      {/* ═══════════════════════════════════════
+          STORY READER (full-screen)
+      ═══════════════════════════════════════ */}
       {showStory && story && story.length > 0 && (
         <StoryReader
           chapters={story}
