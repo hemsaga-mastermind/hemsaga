@@ -89,7 +89,7 @@ export default function Dashboard() {
   const loadMemories = async (spaceId, uid) => {
     try {
       // Owner sees only their own memories — filtered by their user.id as contributorId
-      const res = await fetch(`/api/memories?spaceId=${spaceId}&contributorId=${uid}`);
+      const res = await fetch(`/api/memories?spaceId=${spaceId}&contributorId=${uid}&accessor=owner:${uid}`);
       const data = await res.json();
       if (data.error) { console.error('loadMemories:', data.error); return; }
       setMemories(data.memories || []);
@@ -132,14 +132,18 @@ export default function Dashboard() {
     if (!memText.trim() || !activeSpace || !user) return;
     setSaving(true); setError('');
     try {
-      let photoUrl = null;
+      // Upload photo server-side (private bucket, no public URL)
+      let photoPath = null;
       if (memPhoto) {
-        const fn = `${user.id}/${Date.now()}-${memPhoto.name.replace(/\s/g,'_')}`;
-        const { error: upErr } = await supabase.storage.from('memories').upload(fn, memPhoto);
-        if (!upErr) {
-          const { data: u } = supabase.storage.from('memories').getPublicUrl(fn);
-          photoUrl = u.publicUrl;
-        }
+        const fd = new FormData();
+        fd.append('file', memPhoto);
+        fd.append('spaceId', activeSpace.id);
+        fd.append('contributorId', user.id);
+        fd.append('type', 'memory');
+        const upRes = await fetch('/api/upload', { method: 'POST', body: fd });
+        const upData = await upRes.json();
+        if (upData.path) photoPath = upData.path;
+        else console.warn('Photo upload failed:', upData.error);
       }
       const res = await fetch('/api/memories', {
         method: 'POST',
@@ -151,7 +155,7 @@ export default function Dashboard() {
           author: memAuthor || 'Someone',
           content: memText,
           memory_date: memDate || new Date().toISOString().split('T')[0],
-          photo_url: photoUrl,
+          photo_path: photoPath,
         }),
       });
       const data = await res.json();

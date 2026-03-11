@@ -41,7 +41,7 @@ export default function ContributePage() {
       if (sd.space) setSpace(sd.space);
 
       // Load MY memories only
-      const mr = await fetch(`/api/memories?spaceId=${c.spaceId}&contributorId=${c.contributorId}`);
+      const mr = await fetch(`/api/memories?spaceId=${c.spaceId}&contributorId=${c.contributorId}&accessor=contributor:${c.contributorId}`);
       const md = await mr.json();
       setMyMemories(md.memories || []);
       setTotalCount(md.totalCount || 0);
@@ -62,6 +62,7 @@ export default function ContributePage() {
           author: contributor.name,
           content: memText,
           memory_date: memDate || new Date().toISOString().split('T')[0],
+          photo_path: null, // photo upload coming in next sprint
         }),
       });
       const data = await res.json();
@@ -137,7 +138,7 @@ export default function ContributePage() {
       </header>
 
       {/* ── CONTENT ── */}
-      <div style={{maxWidth:560,margin:'0 auto',padding:'28px 20px 100px'}} className="c-stagger">
+      <div style={{maxWidth:560,margin:'0 auto',padding:'20px 16px max(100px, calc(80px + env(safe-area-inset-bottom)))'}} className="c-stagger">
 
         {/* Hero — generate story */}
         <button onClick={readStory} disabled={generating||totalCount===0} style={{
