@@ -55,7 +55,7 @@ Return a revised version of the chapter that includes this memory. Same length a
 Respond ONLY with a valid JSON object:
 {"title": "Chapter title (unchanged or slightly adjusted)", "content": "Revised full chapter prose here"}`;
 
-    let title, content;
+    let revisedTitle, revisedContent;
     if (process.env.ANTHROPIC_API_KEY) {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -68,8 +68,8 @@ Respond ONLY with a valid JSON object:
       if (!raw) return Response.json({ error: 'Empty AI response' }, { status: 500 });
       try {
         const parsed = safeParseJSON(raw);
-        title = parsed.title;
-        content = parsed.content;
+        revisedTitle = parsed.title;
+        revisedContent = parsed.content;
       } catch (e) {
         return Response.json({ error: `Parse error: ${e.message}` }, { status: 500 });
       }
@@ -93,8 +93,8 @@ Respond ONLY with a valid JSON object:
       if (!raw) return Response.json({ error: 'Empty AI response' }, { status: 500 });
       try {
         const parsed = safeParseJSON(raw);
-        title = parsed.title;
-        content = parsed.content;
+        revisedTitle = parsed.title;
+        revisedContent = parsed.content;
       } catch (e) {
         return Response.json({ error: `Parse error: ${e.message}` }, { status: 500 });
       }
@@ -103,7 +103,7 @@ Respond ONLY with a valid JSON object:
     }
 
     const { data: updated, error: updateErr } = await db.from('stories')
-      .update({ title: title?.trim() || chapter.title, content: (content || chapter.content).trim() })
+      .update({ title: revisedTitle?.trim() || chapter.title, content: (revisedContent || chapter.content).trim() })
       .eq('id', chapter.id)
       .select()
       .single();

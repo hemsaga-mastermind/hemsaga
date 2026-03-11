@@ -1,6 +1,6 @@
 // app/api/spaces/log/route.js
 // Returns access log for a space — owner can see who accessed what and when
-import { getDb } from '../../../lib/supabase-server';
+import { getDb } from '../../../../lib/supabase-server';
 
 // GET /api/spaces/log?spaceId=xxx&userId=yyy
 export async function GET(request) {

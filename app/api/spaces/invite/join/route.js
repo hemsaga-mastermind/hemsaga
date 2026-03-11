@@ -1,6 +1,6 @@
 // app/api/spaces/invite/join/route.js
 // Called when a family member enters their name and joins
-import { getDb } from '../../../../lib/supabase-server';
+import { getDb } from '../../../../../lib/supabase-server';
 import { randomUUID } from 'crypto';
 
 export async function POST(request) {

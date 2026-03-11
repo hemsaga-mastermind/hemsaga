@@ -1,7 +1,7 @@
 // app/api/upload/route.js
 // Handles photo uploads server-side using service role key
 // Browser never touches Supabase Storage directly
-import { getDb } from '../../lib/supabase-server';
+import { getDb } from '../../../lib/supabase-server';
 
 export async function POST(request) {
   try {

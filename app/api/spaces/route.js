@@ -1,5 +1,5 @@
 // app/api/spaces/route.js
-import { getDb } from '../../lib/supabase-server';
+import { getDb } from '../../../lib/supabase-server';
 
 // GET /api/spaces?userId=xxx
 export async function GET(request) {

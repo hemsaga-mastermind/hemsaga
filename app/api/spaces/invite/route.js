@@ -1,7 +1,7 @@
 // app/api/spaces/invite/route.js
 // POST — generate or fetch invite token for a space
 // GET  — resolve token → return space info (for join page)
-import { getDb } from '../../../lib/supabase-server';
+import { getDb } from '../../../../lib/supabase-server';
 
 // GET /api/spaces/invite?token=xxx  → returns space info
 export async function GET(request) {
