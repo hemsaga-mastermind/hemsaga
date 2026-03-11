@@ -1,15 +1,11 @@
 // app/api/spaces/log/route.js
 // Returns access log for a space — owner can see who accessed what and when
-import { createClient } from '@supabase/supabase-js';
-
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { getDb } from '../../../lib/supabase-server';
 
 // GET /api/spaces/log?spaceId=xxx&userId=yyy
 export async function GET(request) {
   try {
+    const db = getDb();
     const { searchParams } = new URL(request.url);
     const spaceId = searchParams.get('spaceId');
     const userId  = searchParams.get('userId');

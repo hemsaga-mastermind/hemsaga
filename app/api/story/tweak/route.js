@@ -1,11 +1,6 @@
 // POST /api/story/tweak — weave a memory into an existing chapter and update it
-import { createClient } from '@supabase/supabase-js';
+import { getDb } from '../../../../lib/supabase-server';
 import { getTargetChapterForMemory } from '../../../../lib/story/placement';
-
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 function safeParseJSON(raw = '') {
   let cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -17,6 +12,7 @@ function safeParseJSON(raw = '') {
 
 export async function POST(request) {
   try {
+    const db = getDb();
     const body = await request.json();
     const { spaceId, memoryId, targetChapter: targetChapterParam, content, author, memory_date, lang } = body;
     if (!spaceId) return Response.json({ error: 'spaceId required' }, { status: 400 });

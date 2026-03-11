@@ -1,13 +1,9 @@
 // GET /api/story?spaceId=xxx — return existing chapters for a space (for refreshing after weave)
-import { createClient } from '@supabase/supabase-js';
-
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { getDb } from '../../../lib/supabase-server';
 
 export async function GET(request) {
   try {
+    const db = getDb();
     const { searchParams } = new URL(request.url);
     const spaceId = searchParams.get('spaceId');
     if (!spaceId) return Response.json({ error: 'spaceId required' }, { status: 400 });

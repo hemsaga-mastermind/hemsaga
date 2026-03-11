@@ -1,15 +1,11 @@
 // app/api/spaces/invite/join/route.js
 // Called when a family member enters their name and joins
-import { createClient } from '@supabase/supabase-js';
+import { getDb } from '../../../../lib/supabase-server';
 import { randomUUID } from 'crypto';
-
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 export async function POST(request) {
   try {
+    const db = getDb();
     const { token, displayName } = await request.json();
     if (!token || !displayName) return Response.json({ error: 'token and displayName required' }, { status: 400 });
 

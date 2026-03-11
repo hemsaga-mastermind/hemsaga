@@ -1,16 +1,12 @@
 // app/api/spaces/invite/route.js
 // POST — generate or fetch invite token for a space
 // GET  — resolve token → return space info (for join page)
-import { createClient } from '@supabase/supabase-js';
-
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { getDb } from '../../../lib/supabase-server';
 
 // GET /api/spaces/invite?token=xxx  → returns space info
 export async function GET(request) {
   try {
+    const db = getDb();
     const { searchParams } = new URL(request.url);
     const token = searchParams.get('token');
     if (!token) return Response.json({ error: 'token required' }, { status: 400 });
@@ -32,6 +28,7 @@ export async function GET(request) {
 // POST /api/spaces/invite  — create a fresh invite link for a space
 export async function POST(request) {
   try {
+    const db = getDb();
     const { spaceId } = await request.json();
     if (!spaceId) return Response.json({ error: 'spaceId required' }, { status: 400 });
 
