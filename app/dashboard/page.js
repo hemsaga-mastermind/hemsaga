@@ -168,8 +168,10 @@ export default function Dashboard() {
   };
 
   const generateStory = async (regenerate = false) => {
-    if (!activeSpace || memories.length === 0) return;
+    if (!activeSpace) return;
+    // Allow generate even if MY memories = 0 (others may have contributed)
     setGenerating(true);
+    setError('');
     try {
       const res = await fetch('/api/generate-story', {
         method: 'POST',
@@ -177,8 +179,19 @@ export default function Dashboard() {
         body: JSON.stringify({ spaceId: activeSpace.id, regenerate }),
       });
       const data = await res.json();
-      if (data.chapters) { setStory(data.chapters); setShowStory(true); }
-    } catch (e) { console.error(e); }
+      if (data.error) {
+        setError(`Story generation failed: ${data.error}`);
+        console.error('generate-story error:', data.error);
+      } else if (data.chapters?.length) {
+        setStory(data.chapters);
+        setShowStory(true);
+      } else {
+        setError('No chapters returned — try again.');
+      }
+    } catch (e) {
+      console.error('generateStory exception:', e);
+      setError('Connection error — check your internet and try again.');
+    }
     setGenerating(false);
   };
 
@@ -527,7 +540,7 @@ export default function Dashboard() {
           <div className="hs-topbar-right">
             {activeSpace && <>
               <button className="btn-ghost" onClick={()=>setShowAddMem(true)} style={{}} id="hs-desk-add">+ Memory</button>
-              <button className="btn-primary" onClick={()=>generateStory(false)} disabled={generating||memories.length===0} style={{padding:'7px 14px',fontSize:'11.5px'}}>
+              <button className="btn-primary" onClick={()=>generateStory(false)} disabled={generating||totalMemCount===0} style={{padding:'7px 14px',fontSize:'11.5px'}}>
                 {generating?<><div className="hs-hero-spinner" style={{width:11,height:11,borderWidth:'1.5px'}}/>Writing…</>:<>✦ Generate</>}
               </button>
               <style>{`@media(max-width:768px){#hs-desk-add{display:none!important;}}`}</style>
@@ -556,7 +569,7 @@ export default function Dashboard() {
         {/* HOME */}
         {activeSpace && view==='home' && (
           <div className="hs-content hs-stagger">
-            <button className="hs-hero" style={{background:theme.grad}} onClick={()=>memories.length>0?generateStory(false):setShowAddMem(true)} disabled={generating}>
+            <button className="hs-hero" style={{background:theme.grad}} onClick={()=>memories.length>0?generateStory(false):setShowAddMem(true)} disabled={generating||totalMemCount===0}>
               {activeSpace.cartoon_url
                 ? <div className="hs-hero-avatar"><img src={activeSpace.cartoon_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/></div>
                 : <div className="hs-hero-avatar" style={{background:'rgba(255,255,255,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:36}}>{activeSpace.cover_emoji}</div>}
@@ -565,7 +578,7 @@ export default function Dashboard() {
                 ? <div style={{display:'flex',alignItems:'center',gap:12,position:'relative',zIndex:1}}><div className="hs-hero-spinner"/><div className="hs-hero-title">Writing the next chapter…</div></div>
                 : <><div className="hs-hero-title">{memories.length===0?<>Start <em>{activeSpace.name}</em></>:<>Continue <em>{activeSpace.name}</em></>}</div>
                     <div className="hs-hero-sub">{memories.length===0?'Every story begins with a single moment.':
-                      `${memories.length} ${memories.length===1?'memory':'memories'} · AI will weave them into the next chapter`}</div>
+                      `${totalMemCount} ${totalMemCount===1?'memory':'memories'} from the family · AI will weave them into the next chapter`}</div>
                     <div className="hs-hero-cta"><span>{memories.length===0?'Add first memory':'Generate next chapter'}</span><span className="hs-hero-arr">→</span></div></>}
             </button>
 

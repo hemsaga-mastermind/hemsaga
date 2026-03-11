@@ -1,17 +1,18 @@
 // app/api/generate-story/route.js
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
+const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// Narrative voice adapted per space type
 const narrativePrompt = {
-  child:   (space, age) => `You are a warm, literary author writing a beautiful family storybook for a child named ${space.subject_name || space.name}${age ? ` (${age})` : ''}. Written from the family's perspective. The child will read this at age 18. Write with deep warmth and love.`,
-  couple:  (space)      => `You are a romantic, literary author writing the love story of ${space.name}. Capture their shared memories, moments big and small, and the beauty of their bond.`,
-  friends: (space)      => `You are a witty and warm author writing the story of ${space.name}. Capture their adventures, laughter, and the bonds that make this friendship special.`,
-  self:    (space)      => `You are a thoughtful author writing a personal memoir for ${space.subject_name || 'someone special'}. These are their memories, their life, their story told with honesty and beauty.`,
-  custom:  (space)      => `You are a literary author writing a meaningful story about ${space.name}. Weave the memories into a beautiful, emotional narrative.`,
+  child:   (space, age) => `You are a warm, literary author writing a beautiful family storybook for a child named ${space.subject_name || space.name}${age ? ` (${age})` : ''}. Written from the loving perspective of family members. The child will read this at age 18. Write with deep warmth, tenderness, and love.`,
+  couple:  (space)      => `You are a romantic, literary author writing the love story of ${space.name}. Capture their shared memories, the small moments and the large ones, the beauty of their bond over time.`,
+  friends: (space)      => `You are a witty and warm author writing the story of ${space.name}. Capture their adventures, laughter, and the unique bonds that make this friendship irreplaceable.`,
+  self:    (space)      => `You are a thoughtful author writing a personal memoir for ${space.subject_name || 'someone'}. These are their own memories — their life, their inner world, their story told with honesty and beauty.`,
+  custom:  (space)      => `You are a literary author writing a meaningful, emotional story about ${space.name}. Weave all the memories into a beautiful narrative that the people involved will treasure forever.`,
 };
 
 function getAge(dob) {
@@ -22,73 +23,187 @@ function getAge(dob) {
   return `${Math.floor(m / 12)} years old`;
 }
 
+// Safely parse JSON from AI — handles markdown fences and trailing text
+function safeParseJSON(raw = '') {
+  // Strip markdown fences
+  let cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+  // Find first { and last } in case there's leading/trailing text
+  const start = cleaned.indexOf('{');
+  const end   = cleaned.lastIndexOf('}');
+  if (start === -1 || end === -1) throw new Error(`No JSON object found in response: ${cleaned.slice(0,200)}`);
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
+
 export async function POST(request) {
   try {
     const { spaceId, regenerate } = await request.json();
     if (!spaceId) return Response.json({ error: 'spaceId required' }, { status: 400 });
 
-    const { data: space } = await supabase.from('spaces').select('*').eq('id', spaceId).single();
-    if (!space) return Response.json({ error: 'Space not found' }, { status: 404 });
+    // ── Load space ──────────────────────────────────────────
+    const { data: space, error: spaceErr } = await db
+      .from('spaces').select('*').eq('id', spaceId).single();
+    if (spaceErr || !space) {
+      return Response.json({ error: `Space not found: ${spaceErr?.message}` }, { status: 404 });
+    }
 
-    const { data: memories } = await supabase.from('memories').select('author, content, memory_date')
-      .eq('space_id', spaceId).order('memory_date', { ascending: true });
-    if (!memories?.length) return Response.json({ error: 'No memories found' }, { status: 400 });
+    // ── Load ALL memories across ALL contributors ────────────
+    // No contributor_id filter — story engine sees everything
+    const { data: memories, error: memErr } = await db
+      .from('memories')
+      .select('author, content, memory_date, contributor_id')
+      .eq('space_id', spaceId)
+      .order('memory_date', { ascending: true });
 
+    if (memErr) return Response.json({ error: `Memory fetch failed: ${memErr.message}` }, { status: 500 });
+    if (!memories?.length) return Response.json({ error: 'No memories found — add some first' }, { status: 400 });
+
+    // ── Load existing chapters ───────────────────────────────
     let existingChapters = [];
     if (regenerate) {
-      await supabase.from('stories').delete().eq('space_id', spaceId);
+      // Delete all and start fresh
+      await db.from('stories').delete().eq('space_id', spaceId);
     } else {
-      const { data } = await supabase.from('stories').select('*')
+      const { data: existing } = await db.from('stories').select('*')
         .eq('space_id', spaceId).order('chapter_number', { ascending: true });
-      existingChapters = data || [];
+      existingChapters = existing || [];
     }
 
     const nextChapterNum = existingChapters.length + 1;
-    const age = getAge(space.subject_dob);
-    const type = space.space_type || 'custom';
+    const age       = getAge(space.subject_dob);
+    const type      = space.space_type || 'custom';
     const systemRole = (narrativePrompt[type] || narrativePrompt.custom)(space, age);
 
-    const memoryLines = memories.map(m => `[${m.memory_date}] ${m.author}: ${m.content}`).join('\n');
+    // Format memories — show author for each so AI knows who contributed what
+    const memoryLines = memories
+      .map(m => `[${m.memory_date}] ${m.author}: ${m.content}`)
+      .join('\n');
+
+    // Include prior chapters for narrative continuity
     const priorContext = existingChapters.length > 0
-      ? `\n\nPREVIOUS CHAPTERS:\n${existingChapters.map(c => `Chapter ${c.chapter_number} — ${c.title}:\n${c.content}`).join('\n\n')}`
+      ? `\n\nPREVIOUS CHAPTERS (for continuity — do not repeat, continue from here):\n${
+          existingChapters.map(c => `Chapter ${c.chapter_number} — "${c.title}":\n${c.content}`).join('\n\n---\n\n')
+        }`
       : '';
 
-    const userPrompt = `${systemRole}\n\nMEMORIES:\n${memoryLines}${priorContext}\n\nWrite Chapter ${nextChapterNum}. Continue naturally. Use vivid detail, warmth, literary quality. 3–5 paragraphs.\n\nRespond ONLY with valid JSON (no markdown):\n{"title": "Chapter title", "content": "Full chapter text"}`;
+    const userPrompt = `${systemRole}
 
+MEMORIES FROM THE FAMILY (all contributors, ordered by date):
+${memoryLines}${priorContext}
+
+Write Chapter ${nextChapterNum} of this story. 
+- Weave memories from MULTIPLE contributors together naturally
+- Do not list memories mechanically — transform them into flowing prose
+- 3–5 rich paragraphs, literary quality, emotionally resonant
+- Continue naturally from previous chapters if any
+
+Respond ONLY with a valid JSON object, nothing else, no markdown:
+{"title": "A evocative chapter title", "content": "Full chapter prose here"}`;
+
+    // ── Call AI ──────────────────────────────────────────────
     let title, content;
 
     if (process.env.ANTHROPIC_API_KEY) {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1200, messages: [{ role: 'user', content: userPrompt }] }),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1400,
+          messages: [{ role: 'user', content: userPrompt }],
+        }),
       });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        return Response.json({ error: `Anthropic API error ${res.status}: ${errText}` }, { status: 500 });
+      }
+
       const data = await res.json();
-      const parsed = JSON.parse((data.content?.[0]?.text || '').replace(/```json|```/g, '').trim());
-      title = parsed.title; content = parsed.content;
+      const raw  = data.content?.[0]?.text || '';
+      if (!raw) return Response.json({ error: 'Empty response from Anthropic' }, { status: 500 });
+
+      try {
+        const parsed = safeParseJSON(raw);
+        title   = parsed.title;
+        content = parsed.content;
+      } catch (parseErr) {
+        console.error('Anthropic parse error, raw:', raw);
+        return Response.json({ error: `AI response could not be parsed: ${parseErr.message}` }, { status: 500 });
+      }
+
     } else if (process.env.GROQ_API_KEY) {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` },
-        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 1200, temperature: 0.85, messages: [{ role: 'system', content: 'Literary author. Respond only with valid JSON.' }, { role: 'user', content: userPrompt }] }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          max_tokens: 1400,
+          temperature: 0.82,
+          messages: [
+            { role: 'system', content: 'You are a literary author. Always respond with only a valid JSON object, no markdown, no extra text.' },
+            { role: 'user', content: userPrompt },
+          ],
+        }),
       });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        return Response.json({ error: `Groq API error ${res.status}: ${errText}` }, { status: 500 });
+      }
+
       const data = await res.json();
-      const parsed = JSON.parse((data.choices?.[0]?.message?.content || '').replace(/```json|```/g, '').trim());
-      title = parsed.title; content = parsed.content;
+      const raw  = data.choices?.[0]?.message?.content || '';
+      if (!raw) return Response.json({ error: 'Empty response from Groq' }, { status: 500 });
+
+      try {
+        const parsed = safeParseJSON(raw);
+        title   = parsed.title;
+        content = parsed.content;
+      } catch (parseErr) {
+        console.error('Groq parse error, raw:', raw);
+        return Response.json({ error: `AI response could not be parsed: ${parseErr.message}` }, { status: 500 });
+      }
+
     } else {
-      return Response.json({ error: 'No AI API key configured' }, { status: 500 });
+      return Response.json({
+        error: 'No AI API key configured. Add ANTHROPIC_API_KEY or GROQ_API_KEY to Vercel environment variables.'
+      }, { status: 500 });
     }
 
-    const { data: saved, error: saveErr } = await supabase.from('stories').insert([{
-      space_id: spaceId, title: title || `Chapter ${nextChapterNum}`,
-      content, chapter_number: nextChapterNum, memories_used: memories.length,
+    // Validate we got actual content
+    if (!title || !content) {
+      return Response.json({ error: 'AI returned empty title or content' }, { status: 500 });
+    }
+
+    // ── Save chapter ─────────────────────────────────────────
+    const { data: saved, error: saveErr } = await db.from('stories').insert([{
+      space_id:       spaceId,
+      title:          title.trim(),
+      content:        content.trim(),
+      chapter_number: nextChapterNum,
+      memories_used:  memories.length,
     }]).select().single();
 
-    if (saveErr) return Response.json({ error: saveErr.message }, { status: 500 });
-    return Response.json({ chapters: [...existingChapters, saved] });
+    if (saveErr) {
+      return Response.json({ error: `Failed to save chapter: ${saveErr.message}` }, { status: 500 });
+    }
+
+    // Return all chapters including the new one
+    return Response.json({
+      chapters: [...existingChapters, saved],
+      newChapter: saved,
+      memoriesUsed: memories.length,
+    });
 
   } catch (err) {
-    console.error('generate-story error:', err);
-    return Response.json({ error: err.message }, { status: 500 });
+    console.error('generate-story unhandled error:', err);
+    return Response.json({ error: `Unexpected error: ${err.message}` }, { status: 500 });
   }
 }

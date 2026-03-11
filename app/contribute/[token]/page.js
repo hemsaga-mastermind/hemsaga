@@ -77,6 +77,7 @@ export default function ContributePage() {
   const readStory = async () => {
     if (!contributor) return;
     setGenerating(true);
+    setError('');
     try {
       const res = await fetch('/api/generate-story', {
         method: 'POST',
@@ -84,8 +85,18 @@ export default function ContributePage() {
         body: JSON.stringify({ spaceId: contributor.spaceId, regenerate: false }),
       });
       const data = await res.json();
-      if (data.chapters?.length) { setStory(data.chapters); setShowStory(true); }
-    } catch (e) { console.error(e); }
+      if (data.error) {
+        setError(`Could not generate story: ${data.error}`);
+      } else if (data.chapters?.length) {
+        setStory(data.chapters);
+        setShowStory(true);
+      } else {
+        setError('No story yet — add more memories and try again.');
+      }
+    } catch (e) {
+      console.error('readStory exception:', e);
+      setError('Connection error — try again.');
+    }
     setGenerating(false);
   };
 
