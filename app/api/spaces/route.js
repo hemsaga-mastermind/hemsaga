@@ -42,13 +42,18 @@ export async function POST(request) {
   }
 }
 
-// PATCH /api/spaces — update cartoon_url
+// PATCH /api/spaces — update cartoon_url, reveal_at, etc.
 export async function PATCH(request) {
   try {
-    const { spaceId, cartoon_url } = await request.json();
+    const body = await request.json();
+    const { spaceId, cartoon_url, reveal_at } = body;
     if (!spaceId) return Response.json({ error: 'spaceId required' }, { status: 400 });
+    const updates = {};
+    if (cartoon_url !== undefined) updates.cartoon_url = cartoon_url;
+    if (reveal_at !== undefined) updates.reveal_at = reveal_at === null || reveal_at === '' ? null : reveal_at;
+    if (Object.keys(updates).length === 0) return Response.json({ error: 'No fields to update' }, { status: 400 });
     const { data, error } = await db.from('spaces')
-      .update({ cartoon_url }).eq('id', spaceId).select().single();
+      .update(updates).eq('id', spaceId).select().single();
     if (error) return Response.json({ error: error.message }, { status: 500 });
     return Response.json({ space: data });
   } catch (err) {

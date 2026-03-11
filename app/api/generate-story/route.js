@@ -58,18 +58,16 @@ export async function POST(request) {
     if (memErr) return Response.json({ error: `Memory fetch failed: ${memErr.message}` }, { status: 500 });
     if (!memories?.length) return Response.json({ error: 'No memories found — add some first' }, { status: 400 });
 
-    // ── Load existing chapters ───────────────────────────────
-    let existingChapters = [];
-    if (regenerate) {
-      // Delete all and start fresh
-      await db.from('stories').delete().eq('space_id', spaceId);
-    } else {
-      const { data: existing } = await db.from('stories').select('*')
-        .eq('space_id', spaceId).order('chapter_number', { ascending: true });
-      existingChapters = existing || [];
-    }
+    // ── Load existing chapters (never delete — chapter history preserved) ──
+    const { data: existingChaptersRaw } = await db.from('stories').select('*')
+      .eq('space_id', spaceId).order('chapter_number', { ascending: true });
+    const existingChapters = existingChaptersRaw || [];
 
-    const nextChapterNum = existingChapters.length + 1;
+    // regenerate = overwrite only the last chapter; otherwise add next
+    const isRegenerateLast = regenerate && existingChapters.length > 0;
+    const nextChapterNum = isRegenerateLast
+      ? existingChapters[existingChapters.length - 1].chapter_number
+      : existingChapters.length + 1;
     const age       = getAge(space.subject_dob);
     const type      = space.space_type || 'custom';
     const systemRole = (narrativePrompt[type] || narrativePrompt.custom)(space, age);
@@ -79,10 +77,13 @@ export async function POST(request) {
       .map(m => `[${m.memory_date}] ${m.author}: ${m.content}`)
       .join('\n');
 
-    // Include prior chapters for narrative continuity
-    const priorContext = existingChapters.length > 0
+    // Include prior chapters for narrative continuity (exclude the one we're regenerating)
+    const chaptersForContext = isRegenerateLast
+      ? existingChapters.slice(0, -1)
+      : existingChapters;
+    const priorContext = chaptersForContext.length > 0
       ? `\n\nPREVIOUS CHAPTERS (for continuity — do not repeat, continue from here):\n${
-          existingChapters.map(c => `Chapter ${c.chapter_number} — "${c.title}":\n${c.content}`).join('\n\n---\n\n')
+          chaptersForContext.map(c => `Chapter ${c.chapter_number} — "${c.title}":\n${c.content}`).join('\n\n---\n\n')
         }`
       : '';
 
@@ -91,7 +92,7 @@ export async function POST(request) {
 MEMORIES FROM THE FAMILY (all contributors, ordered by date):
 ${memoryLines}${priorContext}
 
-Write Chapter ${nextChapterNum} of this story in ${writingLang}. 
+Write Chapter ${nextChapterNum} of this story in ${writingLang}.${isRegenerateLast ? '\n- You are REWRITING this chapter with the same memories; keep the same narrative role and tone but improve or refresh the prose.' : ''}
 - Weave memories from MULTIPLE contributors together naturally
 - Do not list memories mechanically — transform them into flowing prose
 - 3–5 rich paragraphs, literary quality, emotionally resonant
@@ -183,22 +184,39 @@ Respond ONLY with a valid JSON object, nothing else, no markdown:
       return Response.json({ error: 'AI returned empty title or content' }, { status: 500 });
     }
 
-    // ── Save chapter ─────────────────────────────────────────
-    const { data: saved, error: saveErr } = await db.from('stories').insert([{
-      space_id:       spaceId,
-      title:          title.trim(),
-      content:        content.trim(),
-      chapter_number: nextChapterNum,
-      memories_used:  memories.length,
-    }]).select().single();
-
-    if (saveErr) {
-      return Response.json({ error: `Failed to save chapter: ${saveErr.message}` }, { status: 500 });
+    // ── Save chapter (insert new or update last when regenerating) ────────
+    let saved;
+    if (isRegenerateLast) {
+      const lastChapter = existingChapters[existingChapters.length - 1];
+      const { data: updated, error: updateErr } = await db.from('stories')
+        .update({
+          title: title.trim(),
+          content: content.trim(),
+          memories_used: memories.length,
+        })
+        .eq('id', lastChapter.id)
+        .select()
+        .single();
+      if (updateErr) return Response.json({ error: `Failed to update chapter: ${updateErr.message}` }, { status: 500 });
+      saved = updated;
+    } else {
+      const { data: inserted, error: insertErr } = await db.from('stories').insert([{
+        space_id:       spaceId,
+        title:          title.trim(),
+        content:        content.trim(),
+        chapter_number: nextChapterNum,
+        memories_used:  memories.length,
+      }]).select().single();
+      if (insertErr) return Response.json({ error: `Failed to save chapter: ${insertErr.message}` }, { status: 500 });
+      saved = inserted;
     }
 
-    // Return all chapters including the new one
+    const allChapters = isRegenerateLast
+      ? existingChapters.slice(0, -1).concat(saved)
+      : [...existingChapters, saved];
+
     return Response.json({
-      chapters: [...existingChapters, saved],
+      chapters: allChapters,
       newChapter: saved,
       memoriesUsed: memories.length,
     });

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useRouter } from 'next/navigation';
 import StoryReader from './StoryReader';
 import { useTranslation, LangToggle } from '../../lib/i18n/LanguageContext';
+import { getRandomMemoryPrompt } from '../../lib/prompts/memoryPrompts';
 
 const SPACE_TYPES = [
   { id:'child',   emoji:'🌟', label:'Child',   desc:'Family story for your little one' },
@@ -44,6 +45,8 @@ export default function Dashboard() {
   const [memDate,   setMemDate]   = useState('');
   const [memPhoto,  setMemPhoto]  = useState(null);
   const [memPreview,setMemPrev]   = useState(null);
+  const [memoryPrompt, setMemoryPrompt] = useState('');
+  const [memoryPromptId, setMemoryPromptId] = useState(null);
 
   const [cartoonPhoto, setCartoonPhoto]  = useState(null);
   const [cartoonPreview, setCartoonPrev] = useState(null);
@@ -52,16 +55,39 @@ export default function Dashboard() {
   const [story, setStory]         = useState([]);
   const [showStory, setShowStory] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [weavingMemoryId, setWeavingMemoryId] = useState(null);
+  const [weaveSuccessMsg, setWeaveSuccessMsg] = useState(null);
+  const [weaveError, setWeaveError] = useState(null);
+  const [lastSavedMemoryId, setLastSavedMemoryId] = useState(null); // show "Weave into story?" in modal after save
 
   const [inviteLink, setInviteLink] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savingReveal, setSavingReveal] = useState(false);
   const [error, setError]   = useState('');
   const [totalMemCount, setTotalMemCount] = useState(0);
+  const [revealDateInput, setRevealDateInput] = useState(''); // YYYY-MM-DD for input
 
   const router = useRouter();
   const { t, lang } = useTranslation();
 
   useEffect(() => { init(); }, []);
+
+  // When Add Memory modal opens, pick a new random prompt for current language
+  useEffect(() => {
+    if (showAddMem) {
+      const { text, promptId } = getRandomMemoryPrompt(lang || 'en');
+      setMemoryPrompt(text);
+      setMemoryPromptId(promptId);
+    }
+  }, [showAddMem, lang]);
+
+  // Sync reveal date input when active space changes
+  useEffect(() => {
+    if (activeSpace?.reveal_at) {
+      const d = new Date(activeSpace.reveal_at);
+      setRevealDateInput(d.toISOString().slice(0, 10));
+    } else setRevealDateInput('');
+  }, [activeSpace?.id, activeSpace?.reveal_at]);
 
   const init = async () => {
     try {
@@ -158,13 +184,15 @@ export default function Dashboard() {
           content: memText,
           memory_date: memDate || new Date().toISOString().split('T')[0],
           photo_path: photoPath,
+          ...(memoryPromptId != null && { prompt_id: memoryPromptId }),
         }),
       });
       const data = await res.json();
       if (data.error) { setError(data.error); setSaving(false); return; }
       setMemories(prev => [data.memory, ...prev]);
       setMemText(''); setMemAuthor('Papa'); setMemDate('');
-      setMemPhoto(null); setMemPrev(null); setShowAddMem(false);
+      setMemPhoto(null); setMemPrev(null); setMemoryPromptId(null);
+      setLastSavedMemoryId(data.memory.id);
     } catch (e) { setError(e.message); }
     setSaving(false);
   };
@@ -235,6 +263,62 @@ export default function Dashboard() {
   const fmtDate  = (d) => new Date(d).toLocaleDateString('en-SE',{day:'numeric',month:'short',year:'numeric'});
   const fmtShort = (d) => new Date(d).toLocaleDateString('en-SE',{day:'numeric',month:'short'});
   const greeting = () => { const h=new Date().getHours(); return h<12?t.goodMorning:h<17?t.goodAfternoon:h<21?t.goodEvening:t.goodNight; };
+  const getDaysUntilReveal = (revealAt) => {
+    if (!revealAt) return null;
+    const end = new Date(revealAt); end.setHours(0,0,0,0);
+    const now = new Date(); now.setHours(0,0,0,0);
+    const days = Math.ceil((end - now) / (24*60*60*1000));
+    return days;
+  };
+  const weaveMemoryIntoStory = async (memoryId) => {
+    if (!activeSpace) return;
+    setWeavingMemoryId(memoryId);
+    setWeaveSuccessMsg(null);
+    setWeaveError(null);
+    setError('');
+    try {
+      const res = await fetch('/api/story/tweak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spaceId: activeSpace.id, memoryId, lang: lang || 'en' }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        const msg = data.error.includes('No chapters') ? t.weaveErrorNoChapters : data.error;
+        setWeaveError(msg);
+        setWeavingMemoryId(null);
+        return;
+      }
+      setWeaveSuccessMsg(t.weaveSuccess(data.targetChapter));
+      setView('story');
+      setTimeout(() => setWeaveSuccessMsg(null), 5000);
+      // Refresh chapters so Story view shows the updated content
+      try {
+        const r = await fetch(`/api/story?spaceId=${activeSpace.id}`);
+        const j = await r.json();
+        if (j.chapters?.length) {
+          setStory(j.chapters);
+          setShowStory(true);
+        }
+      } catch (_) {}
+    } catch (e) {
+      setWeaveError(e.message || 'Request failed');
+    }
+    setWeavingMemoryId(null);
+  };
+
+  const updateRevealDate = async () => {
+    if (!activeSpace) return;
+    setSavingReveal(true);
+    try {
+      const res = await fetch('/api/spaces', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ spaceId: activeSpace.id, reveal_at: revealDateInput || null }) });
+      const data = await res.json();
+      if (data.error) { setError(data.error); setSavingReveal(false); return; }
+      const updated = { ...activeSpace, reveal_at: data.space?.reveal_at ?? (revealDateInput || null) };
+      setActive(updated); setSpaces(spaces.map(s => s.id === updated.id ? updated : s));
+    } catch (e) { setError(e.message); }
+    setSavingReveal(false);
+  };
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'You';
   const theme    = TYPE_THEME[activeSpace?.space_type] || TYPE_THEME.custom;
 
@@ -503,7 +587,7 @@ export default function Dashboard() {
         {activeSpace && (
           <nav className="hs-nav">
             <div className="hs-nav-lbl">Views</div>
-            {[{id:'home',icon:'⌂',label:t.dashboard},{id:'memories',icon:'🌸',label:t.memories,badge:memories.length||null},{id:'story',icon:'📖',label:t.story}].map(n=>(
+            {[{id:'home',icon:'⌂',label:t.dashboard},{id:'memories',icon:'🌸',label:t.memories,badge:memories.length||null},{id:'story',icon:'📖',label:t.story},{id:'timeline',icon:'📅',label:t.timeline}].map(n=>(
               <button key={n.id} className={`hs-nav-item ${view===n.id?'active':''}`} onClick={()=>setView(n.id)}>
                 <span className="hs-nav-icon">{n.icon}</span>{n.label}
                 {n.badge&&<span className="hs-nav-badge">{n.badge}</span>}
@@ -600,6 +684,21 @@ export default function Dashboard() {
               ))}
             </div>
 
+            {/* Reveal date + countdown */}
+            <div style={{marginBottom:20,display:'flex',flexDirection:'column',gap:10}}>
+              {(()=>{ const days = getDaysUntilReveal(activeSpace.reveal_at); return days !== null && days > 0 ? (
+                <div style={{background:'linear-gradient(135deg,rgba(196,114,74,.12),rgba(122,158,126,.1))',border:'1px solid rgba(196,114,74,.2)',borderRadius:12,padding:'14px 18px',display:'flex',alignItems:'center',gap:12}}>
+                  <span style={{fontSize:22}}>📅</span>
+                  <div><div style={{fontSize:14,fontWeight:600,color:'var(--ink)'}}>{t.daysUntilReveal(days)}</div><div style={{fontSize:11.5,color:'var(--ink4)'}}>{t.revealDateSet(fmtDate(activeSpace.reveal_at))}</div></div>
+                </div>
+              ) : null; })()}
+              <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+                <label style={{fontSize:11,fontWeight:600,color:'var(--ink4)',letterSpacing:1}}>{t.revealDate}</label>
+                <input type="date" value={revealDateInput} onChange={e=>setRevealDateInput(e.target.value)} style={{padding:'8px 12px',borderRadius:8,border:'1px solid var(--ivory3)',fontSize:13,background:'#fff'}}/>
+                <button onClick={updateRevealDate} disabled={savingReveal} className="btn-ghost" style={{padding:'8px 14px',fontSize:12}}>{savingReveal ? '…' : t.setRevealDate}</button>
+              </div>
+            </div>
+
             {/* Curiosity counter — others' hidden memories */}
             {totalMemCount - memories.length > 0 && (
               <div style={{background:'rgba(196,114,74,.07)',border:'1px solid rgba(196,114,74,.15)',borderRadius:12,padding:'12px 18px',marginBottom:20,display:'flex',alignItems:'center',gap:12}}>
@@ -652,6 +751,14 @@ export default function Dashboard() {
               <span className="hs-sec-lbl">{t.allMemories(memories.length)}</span>
               <button className="btn-ghost" style={{fontSize:'11px',padding:'6px 14px'}} onClick={()=>setShowAddMem(true)}>{t.add}</button>
             </div>
+            {weaveError && <div style={{background:'rgba(180,80,80,.08)',border:'1px solid rgba(180,80,80,.2)',borderRadius:10,padding:'10px 14px',marginBottom:16,fontSize:13,color:'var(--ink)',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+              <span>{weaveError}</span>
+              <button type="button" className="btn-ghost" style={{padding:'6px 12px',fontSize:12}} onClick={()=>setWeaveError(null)}>{t.close}</button>
+            </div>}
+            {weaveSuccessMsg && <div style={{background:'rgba(122,158,126,.12)',border:'1px solid rgba(122,158,126,.25)',borderRadius:10,padding:'10px 14px',marginBottom:16,fontSize:13,color:'var(--ink)',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+              <span>{weaveSuccessMsg}</span>
+              <button type="button" className="btn-ghost" style={{padding:'6px 12px',fontSize:12}} onClick={()=>{setView('story');setWeaveSuccessMsg(null);}}>{t.viewStory}</button>
+            </div>}
             {memories.length===0
               ? <div className="hs-empty"><div className="hs-empty-icon">🌸</div><div className="hs-empty-title">{t.noMemoriesPageTitle}</div><div className="hs-empty-desc">{t.noMemoriesPageDesc}</div></div>
               : <div className="hs-mem-feed">{memories.map(m=>(
@@ -660,6 +767,9 @@ export default function Dashboard() {
                     <div className="hs-mem-body">
                       <div className="hs-mem-meta"><span className="hs-mem-author">{m.author}</span><span className="hs-mem-date">{fmtDate(m.memory_date)}</span></div>
                       <div className="hs-mem-text">{m.content}</div>
+                      <button type="button" className="btn-ghost" style={{marginTop:10,padding:'6px 12px',fontSize:11}} onClick={()=>weaveMemoryIntoStory(m.id)} disabled={weavingMemoryId===m.id}>
+                        {weavingMemoryId===m.id ? t.weavingIntoStory : t.weaveIntoStory}
+                      </button>
                     </div>
                     {m.photo_url&&<img src={m.photo_url} alt="" className="hs-mem-photo"/>}
                   </div>
@@ -668,6 +778,39 @@ export default function Dashboard() {
         )}
 
         {/* STORY */}
+        {activeSpace && view==='timeline' && (
+          <div className="hs-content hs-stagger">
+            <div className="hs-sec-row"><span className="hs-sec-lbl">{t.timeline}</span><span style={{fontSize:12,color:'var(--ink4)'}}>{memories.length} {t.memoriesStat.toLowerCase()}</span></div>
+            {weaveError && <div style={{background:'rgba(180,80,80,.08)',border:'1px solid rgba(180,80,80,.2)',borderRadius:10,padding:'10px 14px',marginBottom:16,fontSize:13,color:'var(--ink)',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+              <span>{weaveError}</span>
+              <button type="button" className="btn-ghost" style={{padding:'6px 12px',fontSize:12}} onClick={()=>setWeaveError(null)}>{t.close}</button>
+            </div>}
+            {weaveSuccessMsg && <div style={{background:'rgba(122,158,126,.12)',border:'1px solid rgba(122,158,126,.25)',borderRadius:10,padding:'10px 14px',marginBottom:16,fontSize:13,color:'var(--ink)',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+              <span>{weaveSuccessMsg}</span>
+              <button type="button" className="btn-ghost" style={{padding:'6px 12px',fontSize:12}} onClick={()=>{setView('story');setWeaveSuccessMsg(null);}}>{t.viewStory}</button>
+            </div>}
+            <p style={{fontSize:13,color:'var(--ink4)',marginBottom:24,lineHeight:1.6}}>{activeSpace.name} — {t.recentMemories}</p>
+            {memories.length===0
+              ? <div className="hs-empty"><div className="hs-empty-icon">📅</div><div className="hs-empty-title">No memories yet</div><div className="hs-empty-desc">{t.noMemoriesPageDesc}</div></div>
+              : <div style={{position:'relative',paddingLeft:24,borderLeft:'2px solid var(--ivory3)',marginLeft:8}}>
+                  {[...memories].sort((a,b)=>new Date(a.memory_date)-new Date(b.memory_date)).map((m,i)=>(
+                    <div key={m.id} style={{position:'relative',marginBottom:28}}>
+                      <div style={{position:'absolute',left:-32,top:2,width:12,height:12,borderRadius:'50%',background:'var(--terra)',border:'2px solid var(--ivory)'}}/>
+                      <div style={{fontSize:11,fontWeight:600,color:'var(--terra)',letterSpacing:1,marginBottom:6}}>{fmtDate(m.memory_date)}</div>
+                      <div style={{background:'#fff',borderRadius:12,border:'1px solid var(--ivory3)',padding:'14px 18px',boxShadow:'var(--sh)'}}>
+                        <div style={{fontSize:11,color:'var(--ink4)',marginBottom:6}}>{m.author}</div>
+                        <div style={{fontFamily:'var(--serif)',fontSize:15,color:'var(--ink)',lineHeight:1.7,fontStyle:'italic'}}>{m.content}</div>
+                        {m.photo_url&&<img src={m.photo_url} alt="" style={{marginTop:10,width:'100%',maxWidth:280,borderRadius:8,objectFit:'cover'}}/>}
+                        <button type="button" className="btn-ghost" style={{marginTop:12,padding:'6px 12px',fontSize:11}} onClick={()=>weaveMemoryIntoStory(m.id)} disabled={weavingMemoryId===m.id}>
+                          {weavingMemoryId===m.id ? t.weavingIntoStory : t.weaveIntoStory}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>}
+          </div>
+        )}
+
         {activeSpace && view==='story' && (
           <div className="hs-content hs-stagger">
             <div className="hs-sec-row"><span className="hs-sec-lbl">{t.theStoryOf(activeSpace.name)}</span></div>
@@ -688,7 +831,7 @@ export default function Dashboard() {
         <nav className="hs-mob-nav">
           <div className="hs-mob-nav-inner">
             {activeSpace && <>
-              {[{id:'home',icon:'⌂',label:t.dashboard},{id:'memories',icon:'🌸',label:t.memories},{id:'story',icon:'📖',label:t.story}].map(n=>(
+              {[{id:'home',icon:'⌂',label:t.dashboard},{id:'memories',icon:'🌸',label:t.memories},{id:'story',icon:'📖',label:t.story},{id:'timeline',icon:'📅',label:t.timeline}].map(n=>(
                 <button key={n.id} className={`hs-mob-nav-item ${view===n.id?'active':''}`} onClick={()=>setView(n.id)}>
                   <span>{n.icon}</span><span>{n.label}</span>
                 </button>
@@ -736,25 +879,37 @@ export default function Dashboard() {
 
       {/* ADD MEMORY MODAL */}
       {showAddMem && (
-        <div className="hs-overlay" onClick={()=>setShowAddMem(false)}>
+        <div className="hs-overlay" onClick={()=>{setShowAddMem(false);setLastSavedMemoryId(null);}}>
           <div className="hs-modal" onClick={e=>e.stopPropagation()}>
             <div className="hs-modal-hd"><div className="hs-modal-bar"/><h2 className="hs-modal-title">Log a <em>memory</em></h2><p className="hs-modal-desc">Even the smallest moment becomes part of this story forever.</p></div>
             <div className="hs-modal-body">
-              {error&&<div className="hs-err">⚠ {error}</div>}
-              <label className="hs-lbl">{t.whoIsSharing}</label>
-              <input className="hs-input" placeholder={t.whoIsSharingPlaceholder} value={memAuthor} onChange={e=>setMemAuthor(e.target.value)}/>
-              <label className="hs-lbl">{t.whenDidThisHappen}</label>
-              <input className="hs-input" type="date" value={memDate||new Date().toISOString().split('T')[0]} max={new Date().toISOString().split('T')[0]} onChange={e=>setMemDate(e.target.value)}/>
-              <label className="hs-lbl">{t.whatHappened}</label>
-              <textarea className="hs-textarea" placeholder={t.whatHappenedPlaceholder} value={memText} onChange={e=>setMemText(e.target.value)}/>
-              <label className="hs-lbl">{t.photoOptional}</label>
-              {memPreview
-                ? <div style={{position:'relative',marginBottom:16}}><img src={memPreview} style={{width:'100%',maxHeight:190,objectFit:'cover',borderRadius:10}} alt=""/><button onClick={()=>{setMemPhoto(null);setMemPrev(null);}} style={{position:'absolute',top:8,right:8,background:'rgba(44,26,14,.65)',color:'white',border:'none',borderRadius:'50%',width:26,height:26,cursor:'pointer',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center'}}>×</button></div>
-                : <label className="hs-upload"><span style={{fontSize:26}}>📷</span><span style={{fontSize:13,color:'var(--ink3)',fontWeight:500}}>{t.tapToAddPhoto}</span><input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(f){setMemPhoto(f);setMemPrev(URL.createObjectURL(f));}}}/></label>}
-              <div className="hs-modal-btns">
-                <button className="hs-btn-save" onClick={saveMemory} disabled={saving||!memText.trim()}>{saving?t.saving:t.saveMemory}</button>
-                <button className="hs-btn-cancel" onClick={()=>{setShowAddMem(false);setError('');setMemPhoto(null);setMemPrev(null);}}>{t.cancel}</button>
-              </div>
+              {lastSavedMemoryId ? (
+                <>
+                  <p style={{fontSize:15,color:'var(--ink)',marginBottom:20}}>{t.memorySavedWeavePrompt}</p>
+                  <div className="hs-modal-btns">
+                    <button className="hs-btn-save" onClick={async()=>{await weaveMemoryIntoStory(lastSavedMemoryId);setLastSavedMemoryId(null);setShowAddMem(false);}} disabled={weavingMemoryId===lastSavedMemoryId}>{weavingMemoryId===lastSavedMemoryId?t.weavingIntoStory:t.weaveIntoStory}</button>
+                    <button className="hs-btn-cancel" onClick={()=>{setLastSavedMemoryId(null);setShowAddMem(false);}}>{t.done}</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {error&&<div className="hs-err">⚠ {error}</div>}
+                  <label className="hs-lbl">{t.whoIsSharing}</label>
+                  <input className="hs-input" placeholder={t.whoIsSharingPlaceholder} value={memAuthor} onChange={e=>setMemAuthor(e.target.value)}/>
+                  <label className="hs-lbl">{t.whenDidThisHappen}</label>
+                  <input className="hs-input" type="date" value={memDate||new Date().toISOString().split('T')[0]} max={new Date().toISOString().split('T')[0]} onChange={e=>setMemDate(e.target.value)}/>
+                  <label className="hs-lbl">{t.whatHappened}</label>
+                  <textarea className="hs-textarea" placeholder={memoryPrompt || t.whatHappenedPlaceholder} value={memText} onChange={e=>setMemText(e.target.value)}/>
+                  <label className="hs-lbl">{t.photoOptional}</label>
+                  {memPreview
+                    ? <div style={{position:'relative',marginBottom:16}}><img src={memPreview} style={{width:'100%',maxHeight:190,objectFit:'cover',borderRadius:10}} alt=""/><button onClick={()=>{setMemPhoto(null);setMemPrev(null);}} style={{position:'absolute',top:8,right:8,background:'rgba(44,26,14,.65)',color:'white',border:'none',borderRadius:'50%',width:26,height:26,cursor:'pointer',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center'}}>×</button></div>
+                    : <label className="hs-upload"><span style={{fontSize:26}}>📷</span><span style={{fontSize:13,color:'var(--ink3)',fontWeight:500}}>{t.tapToAddPhoto}</span><input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(f){setMemPhoto(f);setMemPrev(URL.createObjectURL(f));}}}/></label>}
+                  <div className="hs-modal-btns">
+                    <button className="hs-btn-save" onClick={saveMemory} disabled={saving||!memText.trim()}>{saving?t.saving:t.saveMemory}</button>
+                    <button className="hs-btn-cancel" onClick={()=>{setShowAddMem(false);setError('');setMemPhoto(null);setMemPrev(null);}}>{t.cancel}</button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

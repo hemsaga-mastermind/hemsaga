@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import StoryReader from '../../dashboard/StoryReader';
 import { useTranslation, LangToggle } from '../../../lib/i18n/LanguageContext';
+import { getRandomMemoryPrompt } from '../../../lib/prompts/memoryPrompts';
 
 export default function ContributePage() {
   const { token } = useParams();
@@ -20,12 +21,23 @@ export default function ContributePage() {
   const [saving, setSaving]           = useState(false);
   const [generating, setGenerating]   = useState(false);
   const [error, setError]             = useState('');
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
+
+  // When Add Memory modal opens, pick a new random prompt for current language
+  useEffect(() => {
+    if (showAddMem) {
+      const { text, promptId } = getRandomMemoryPrompt(lang || 'en');
+      setMemoryPrompt(text);
+      setMemoryPromptId(promptId);
+    }
+  }, [showAddMem, lang]);
 
   const [memText,   setMemText]   = useState('');
   const [memDate,   setMemDate]   = useState('');
   const [memPhoto,  setMemPhoto]  = useState(null);
   const [memPreview,setMemPrev]   = useState(null);
+  const [memoryPrompt, setMemoryPrompt] = useState('');
+  const [memoryPromptId, setMemoryPromptId] = useState(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(`hemsaga_contributor_${token}`);
@@ -64,14 +76,15 @@ export default function ContributePage() {
           author: contributor.name,
           content: memText,
           memory_date: memDate || new Date().toISOString().split('T')[0],
-          photo_path: null, // photo upload coming in next sprint
+          photo_path: null,
+          ...(memoryPromptId != null && { prompt_id: memoryPromptId }),
         }),
       });
       const data = await res.json();
       if (data.error) { setError(data.error); setSaving(false); return; }
       setMyMemories(prev => [data.memory, ...prev]);
       setTotalCount(prev => prev + 1);
-      setMemText(''); setMemDate(''); setShowAddMem(false);
+      setMemText(''); setMemDate(''); setMemoryPromptId(null); setShowAddMem(false);
     } catch (e) { setError(e.message); }
     setSaving(false);
   };
@@ -104,6 +117,14 @@ export default function ContributePage() {
 
   const othersCount = totalCount - myMemories.length;
   const fmtShort = (d) => new Date(d).toLocaleDateString('en-SE', { day:'numeric', month:'short' });
+  const fmtDate = (d) => new Date(d).toLocaleDateString('en-SE', { day:'numeric', month:'short', year:'numeric' });
+  const getDaysUntilReveal = (revealAt) => {
+    if (!revealAt) return null;
+    const end = new Date(revealAt); end.setHours(0,0,0,0);
+    const now = new Date(); now.setHours(0,0,0,0);
+    return Math.ceil((end - now) / (24*60*60*1000));
+  };
+  const revealDays = space?.reveal_at ? getDaysUntilReveal(space.reveal_at) : null;
 
   if (loading) return (
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#FAF7F2'}}>
@@ -179,6 +200,17 @@ export default function ContributePage() {
                 <div style={{fontSize:12.5,color:'rgba(250,247,242,.38)',position:'relative',zIndex:1,lineHeight:1.6}}>{totalCount===0?'{t.addMemoriesFirst}':'{t.aiWeavesAll}'}</div>
                 {totalCount>0&&<div style={{display:'inline-flex',alignItems:'center',gap:8,marginTop:16,background:'rgba(255,255,255,.09)',border:'1px solid rgba(255,255,255,.13)',borderRadius:40,padding:'8px 18px',fontFamily:'Plus Jakarta Sans,sans-serif',fontSize:12,color:'rgba(250,247,242,.8)',position:'relative',zIndex:1}}>Read the story <span>→</span></div>}</>}
         </button>
+
+        {/* Countdown to reveal */}
+        {revealDays !== null && revealDays > 0 && (
+          <div style={{background:'rgba(196,114,74,.08)',border:'1px solid rgba(196,114,74,.18)',borderRadius:12,padding:'12px 16px',marginBottom:20,display:'flex',alignItems:'center',gap:12}}>
+            <span style={{fontSize:20}}>📅</span>
+            <div>
+              <div style={{fontSize:13,fontWeight:600,color:'#2C1A0E'}}>{t.daysUntilReveal(revealDays)}</div>
+              <div style={{fontSize:11.5,color:'#8C6B4E',marginTop:2}}>{t.revealDateSet(fmtDate(space.reveal_at))}</div>
+            </div>
+          </div>
+        )}
 
         {/* Curiosity counter */}
         {othersCount > 0 && (
@@ -266,7 +298,7 @@ export default function ContributePage() {
               <input type="date" value={memDate||new Date().toISOString().split('T')[0]} max={new Date().toISOString().split('T')[0]} onChange={e=>setMemDate(e.target.value)}
                 style={{width:'100%',padding:'11px 14px',background:'#FAF7F2',border:'1.5px solid #EAE0D3',borderRadius:9,fontFamily:'Plus Jakarta Sans,sans-serif',fontSize:13.5,color:'#2C1A0E',outline:'none',marginBottom:16}}/>
               <label style={{display:'block',fontSize:9.5,letterSpacing:2.5,textTransform:'uppercase',color:'#8C6B4E',fontWeight:600,marginBottom:7}}>What happened?</label>
-              <textarea value={memText} onChange={e=>setMemText(e.target.value)} placeholder="Describe the moment in your own words…"
+              <textarea value={memText} onChange={e=>setMemText(e.target.value)} placeholder={memoryPrompt || t.whatHappenedPlaceholder}
                 style={{width:'100%',padding:'12px 14px',background:'#FAF7F2',border:'1.5px solid #EAE0D3',borderRadius:9,fontFamily:'Lora,Georgia,serif',fontStyle:'italic',fontSize:16,color:'#2C1A0E',outline:'none',resize:'none',minHeight:130,lineHeight:1.75,marginBottom:16}}
                 onFocus={e=>{e.target.style.borderColor='#C4724A';e.target.style.background='#fff';}}
                 onBlur={e=>{e.target.style.borderColor='#EAE0D3';e.target.style.background='#FAF7F2';}}

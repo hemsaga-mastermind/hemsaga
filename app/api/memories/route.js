@@ -75,13 +75,13 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { spaceId, contributorId, author, content, memory_date, photo_path } = body;
+    const { spaceId, contributorId, author, content, memory_date, photo_path, prompt_id } = body;
 
     if (!spaceId || !content) {
       return Response.json({ error: 'spaceId and content required' }, { status: 400 });
     }
 
-    const { data, error } = await db.from('memories').insert([{
+    const row = {
       space_id:       spaceId,
       contributor_id: contributorId || null,
       user_id:        contributorId || 'anonymous',
@@ -89,7 +89,12 @@ export async function POST(request) {
       content:        content.trim(),
       memory_date:    memory_date || new Date().toISOString().split('T')[0],
       photo_url:      photo_path || null, // stores path, signed on read
-    }]).select().single();
+    };
+    if (prompt_id !== undefined && prompt_id !== null) {
+      row.prompt_id = String(prompt_id);
+    }
+
+    const { data, error } = await db.from('memories').insert([row]).select().single();
 
     if (error) return Response.json({ error: error.message }, { status: 500 });
 

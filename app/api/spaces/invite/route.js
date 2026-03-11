@@ -20,7 +20,7 @@ export async function GET(request) {
     if (error || !member) return Response.json({ error: 'Invalid invite link' }, { status: 404 });
 
     const { data: space } = await db.from('spaces')
-      .select('id, name, cover_emoji, space_type, cartoon_url').eq('id', member.space_id).single();
+      .select('id, name, cover_emoji, space_type, cartoon_url, reveal_at').eq('id', member.space_id).single();
     if (!space) return Response.json({ error: 'Space not found' }, { status: 404 });
 
     return Response.json({ space, token });
