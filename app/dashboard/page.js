@@ -55,6 +55,7 @@ export default function Dashboard() {
   const [inviteLink, setInviteLink] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
+  const [totalMemCount, setTotalMemCount] = useState(0);
 
   const router = useRouter();
 
@@ -80,23 +81,25 @@ export default function Dashboard() {
       setSpaces(data.spaces || []);
       if (data.spaces?.length) {
         setActive(data.spaces[0]);
-        await loadMemories(data.spaces[0].id);
+        await loadMemories(data.spaces[0].id, uid);
       }
     } catch (e) { console.error('loadSpaces exception:', e); }
   };
 
-  const loadMemories = async (spaceId) => {
+  const loadMemories = async (spaceId, uid) => {
     try {
-      const res = await fetch(`/api/memories?spaceId=${spaceId}`);
+      // Owner sees only their own memories — filtered by their user.id as contributorId
+      const res = await fetch(`/api/memories?spaceId=${spaceId}&contributorId=${uid}`);
       const data = await res.json();
       if (data.error) { console.error('loadMemories:', data.error); return; }
       setMemories(data.memories || []);
+      setTotalMemCount(data.totalCount || 0);
     } catch (e) { console.error('loadMemories exception:', e); }
   };
 
   const switchSpace = async (s) => {
     setActive(s); setView('home'); setMobileMenu(false);
-    await loadMemories(s.id);
+    await loadMemories(s.id, user?.id);
   };
 
   const createSpace = async () => {
@@ -144,6 +147,7 @@ export default function Dashboard() {
         body: JSON.stringify({
           spaceId: activeSpace.id,
           userId: user.id,
+          contributorId: user.id,
           author: memAuthor || 'Someone',
           content: memText,
           memory_date: memDate || new Date().toISOString().split('T')[0],
@@ -494,6 +498,16 @@ export default function Dashboard() {
               ))}
             </div>
 
+            {/* Curiosity counter — others' hidden memories */}
+            {totalMemCount - memories.length > 0 && (
+              <div style={{background:'rgba(196,114,74,.07)',border:'1px solid rgba(196,114,74,.15)',borderRadius:12,padding:'12px 18px',marginBottom:20,display:'flex',alignItems:'center',gap:12}}>
+                <span style={{fontSize:20}}>🤫</span>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{totalMemCount - memories.length} {totalMemCount - memories.length === 1 ? 'memory' : 'memories'} from family — hidden until the story is told</div>
+                  <div style={{fontSize:11.5,color:'var(--ink4)',marginTop:2}}>Generate the story to see what everyone contributed</div>
+                </div>
+              </div>
+            )}
             <div className="hs-sec-row"><span className="hs-sec-lbl">Quick Actions</span></div>
             <div className="hs-act-g">
               {[
