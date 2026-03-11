@@ -1,15 +1,11 @@
 // app/api/upload/route.js
 // Handles photo uploads server-side using service role key
 // Browser never touches Supabase Storage directly
-import { createClient } from '@supabase/supabase-js';
-
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { getDb } from '../../lib/supabase-server';
 
 export async function POST(request) {
   try {
+    const db = getDb();
     const formData = await request.formData();
     const file        = formData.get('file');
     const spaceId     = formData.get('spaceId');

@@ -1,10 +1,5 @@
 // app/api/generate-story/route.js
-import { createClient } from '@supabase/supabase-js';
-
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { getDb } from '../../../lib/supabase-server';
 
 // Narrative voice adapted per space type
 const narrativePrompt = {
@@ -36,6 +31,7 @@ function safeParseJSON(raw = '') {
 
 export async function POST(request) {
   try {
+    const db = getDb();
     const { spaceId, regenerate, lang } = await request.json();
     const writingLang = lang === 'sv' ? 'Swedish' : 'English';
     if (!spaceId) return Response.json({ error: 'spaceId required' }, { status: 400 });
