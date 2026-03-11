@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'next/navigation';
 import StoryReader from './StoryReader';
+import { useTranslation, LangToggle } from '../../lib/i18n/LanguageContext';
 
 const SPACE_TYPES = [
   { id:'child',   emoji:'🌟', label:'Child',   desc:'Family story for your little one' },
@@ -58,6 +59,7 @@ export default function Dashboard() {
   const [totalMemCount, setTotalMemCount] = useState(0);
 
   const router = useRouter();
+  const { t, lang } = useTranslation();
 
   useEffect(() => { init(); }, []);
 
@@ -176,7 +178,7 @@ export default function Dashboard() {
       const res = await fetch('/api/generate-story', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ spaceId: activeSpace.id, regenerate }),
+        body: JSON.stringify({ spaceId: activeSpace.id, regenerate, lang }),
       });
       const data = await res.json();
       if (data.error) {
@@ -232,13 +234,13 @@ export default function Dashboard() {
   const getDays  = (dob) => dob ? Math.floor((new Date()-new Date(dob))/86400000).toLocaleString() : '—';
   const fmtDate  = (d) => new Date(d).toLocaleDateString('en-SE',{day:'numeric',month:'short',year:'numeric'});
   const fmtShort = (d) => new Date(d).toLocaleDateString('en-SE',{day:'numeric',month:'short'});
-  const greeting = () => { const h=new Date().getHours(); return h<12?'Good morning':h<17?'Good afternoon':h<21?'Good evening':'Good night'; };
+  const greeting = () => { const h=new Date().getHours(); return h<12?t.goodMorning:h<17?t.goodAfternoon:h<21?t.goodEvening:t.goodNight; };
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'You';
   const theme    = TYPE_THEME[activeSpace?.space_type] || TYPE_THEME.custom;
 
   if (loading) return (
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#FAF7F2',fontFamily:"'Lora',Georgia,serif",color:'#C4724A',fontSize:16,fontStyle:'italic'}}>
-      Loading your stories…
+      {t.loading}
     </div>
   );
 
@@ -486,7 +488,7 @@ export default function Dashboard() {
       <aside className="hs-sb">
         <div className="hs-brand">
           <div className="hs-logo"><div className="hs-logo-mark">📖</div>Hemsaga</div>
-          <div className="hs-tagline">Family Stories Forever</div>
+          <div className="hs-tagline">{t.tagline}</div>
         </div>
         <div className="hs-spaces-list">
           <div className="hs-spaces-label">My Spaces</div>
@@ -501,16 +503,16 @@ export default function Dashboard() {
         {activeSpace && (
           <nav className="hs-nav">
             <div className="hs-nav-lbl">Views</div>
-            {[{id:'home',icon:'⌂',label:'Dashboard'},{id:'memories',icon:'🌸',label:'Memories',badge:memories.length||null},{id:'story',icon:'📖',label:'Our Story'}].map(n=>(
+            {[{id:'home',icon:'⌂',label:t.dashboard},{id:'memories',icon:'🌸',label:t.memories,badge:memories.length||null},{id:'story',icon:'📖',label:t.story}].map(n=>(
               <button key={n.id} className={`hs-nav-item ${view===n.id?'active':''}`} onClick={()=>setView(n.id)}>
                 <span className="hs-nav-icon">{n.icon}</span>{n.label}
                 {n.badge&&<span className="hs-nav-badge">{n.badge}</span>}
               </button>
             ))}
             <div className="hs-nav-lbl" style={{marginTop:8}}>Actions</div>
-            <button className="hs-nav-item" onClick={()=>setShowAddMem(true)}><span className="hs-nav-icon">✦</span>Add Memory</button>
-            <button className="hs-nav-item" onClick={()=>{setShowInvite(true);setInviteLink('');}}><span className="hs-nav-icon">👥</span>Invite Someone</button>
-            <button className="hs-nav-item" onClick={()=>setShowCartoon(true)}><span className="hs-nav-icon">🎨</span>Cartoon Avatar</button>
+            <button className="hs-nav-item" onClick={()=>setShowAddMem(true)}><span className="hs-nav-icon">✦</span>{t.addMemory}</button>
+            <button className="hs-nav-item" onClick={()=>{setShowInvite(true);setInviteLink('');}}><span className="hs-nav-icon">👥</span>{t.inviteSomeone}</button>
+            <button className="hs-nav-item" onClick={()=>setShowCartoon(true)}><span className="hs-nav-icon">🎨</span>{t.cartoonAvatar}</button>
           </nav>
         )}
         <div className="hs-sb-bot">
@@ -538,10 +540,11 @@ export default function Dashboard() {
           </div>
           <style>{`@media(min-width:769px){#hs-desk-greet{display:flex!important;}#hs-mob-greet{display:none!important;}}`}</style>
           <div className="hs-topbar-right">
+            <LangToggle/>
             {activeSpace && <>
               <button className="btn-ghost" onClick={()=>setShowAddMem(true)} style={{}} id="hs-desk-add">+ Memory</button>
               <button className="btn-primary" onClick={()=>generateStory(false)} disabled={generating||totalMemCount===0} style={{padding:'7px 14px',fontSize:'11.5px'}}>
-                {generating?<><div className="hs-hero-spinner" style={{width:11,height:11,borderWidth:'1.5px'}}/>Writing…</>:<>✦ Generate</>}
+                {generating?<><div className="hs-hero-spinner" style={{width:11,height:11,borderWidth:'1.5px'}}/>Writing…</>:<>{t.generate}</>}
               </button>
               <style>{`@media(max-width:768px){#hs-desk-add{display:none!important;}}`}</style>
             </>}
@@ -554,13 +557,13 @@ export default function Dashboard() {
             <div className="hs-setup-card">
               <div style={{fontSize:52,marginBottom:20}}>📖</div>
               <h1 style={{fontFamily:'var(--serif)',fontSize:30,fontWeight:600,color:'var(--ink)',marginBottom:12}}>
-                Create your first <em style={{fontStyle:'italic',color:'var(--terra)'}}>Space</em>
+                {t.createFirstSpace} <em style={{fontStyle:'italic',color:'var(--terra)'}}>Space</em>
               </h1>
               <p style={{fontSize:14,color:'var(--ink3)',marginBottom:32,lineHeight:1.75}}>
-                A Space is your story container — name it anything.
+                {t.createFirstSpaceDesc}
               </p>
               <button className="btn-primary" style={{margin:'0 auto',padding:'12px 32px',borderRadius:14}} onClick={()=>setShowNew(true)}>
-                Create a Space →
+                {t.createASpace}
               </button>
             </div>
           </div>
@@ -573,22 +576,21 @@ export default function Dashboard() {
               {activeSpace.cartoon_url
                 ? <div className="hs-hero-avatar"><img src={activeSpace.cartoon_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/></div>
                 : <div className="hs-hero-avatar" style={{background:'rgba(255,255,255,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:36}}>{activeSpace.cover_emoji}</div>}
-              <div className="hs-hero-eyebrow">AI Story Engine · Hemsaga</div>
+              <div className="hs-hero-eyebrow">{t.aiStoryEngine}</div>
               {generating
                 ? <div style={{display:'flex',alignItems:'center',gap:12,position:'relative',zIndex:1}}><div className="hs-hero-spinner"/><div className="hs-hero-title">Writing the next chapter…</div></div>
                 : <><div className="hs-hero-title">{memories.length===0?<>Start <em>{activeSpace.name}</em></>:<>Continue <em>{activeSpace.name}</em></>}</div>
-                    <div className="hs-hero-sub">{memories.length===0?'Every story begins with a single moment.':
-                      `${totalMemCount} ${totalMemCount===1?'memory':'memories'} from the family · AI will weave them into the next chapter`}</div>
-                    <div className="hs-hero-cta"><span>{memories.length===0?'Add first memory':'Generate next chapter'}</span><span className="hs-hero-arr">→</span></div></>}
+                    <div className="hs-hero-sub">{totalMemCount===0?t.firstMemoryDesc:t.memoriesDesc(totalMemCount)}</div>
+                    <div className="hs-hero-cta"><span>{totalMemCount===0?t.addFirstMemory:t.generateNextChapter}</span><span className="hs-hero-arr">→</span></div></>}
             </button>
 
-            <div className="hs-sec-row"><span className="hs-sec-lbl">At a glance</span></div>
+            <div className="hs-sec-row"><span className="hs-sec-lbl">{t.atAGlance}</span></div>
             <div className="hs-stats-g">
               {[
-                {icon:'🌸',n:memories.length,l:'Memories'},
-                {icon:'📖',n:Math.ceil(memories.length/5)||0,l:'Chapters'},
-                {icon:'📅',n:activeSpace.subject_dob?getDays(activeSpace.subject_dob):'—',l:'Days old'},
-                {icon:'💛',n:'∞',l:'Love stored'},
+                {icon:'🌸',n:memories.length,l:t.memoriesStat},
+                {icon:'📖',n:Math.ceil(memories.length/5)||0,l:t.chaptersStat},
+                {icon:'📅',n:activeSpace.subject_dob?getDays(activeSpace.subject_dob):'—',l:t.daysOldStat},
+                {icon:'💛',n:'∞',l:t.loveStored},
               ].map((s,i)=>(
                 <div key={i} className="hs-stat-c">
                   <div className="hs-stat-icon">{s.icon}</div>
@@ -603,12 +605,12 @@ export default function Dashboard() {
               <div style={{background:'rgba(196,114,74,.07)',border:'1px solid rgba(196,114,74,.15)',borderRadius:12,padding:'12px 18px',marginBottom:20,display:'flex',alignItems:'center',gap:12}}>
                 <span style={{fontSize:20}}>🤫</span>
                 <div>
-                  <div style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{totalMemCount - memories.length} {totalMemCount - memories.length === 1 ? 'memory' : 'memories'} from family — hidden until the story is told</div>
-                  <div style={{fontSize:11.5,color:'var(--ink4)',marginTop:2}}>Generate the story to see what everyone contributed</div>
+                  <div style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{t.hiddenMemories(totalMemCount - memories.length)}</div>
+                  <div style={{fontSize:11.5,color:'var(--ink4)',marginTop:2}}>{t.hiddenMemoriesDesc}</div>
                 </div>
               </div>
             )}
-            <div className="hs-sec-row"><span className="hs-sec-lbl">Quick Actions</span></div>
+            <div className="hs-sec-row"><span className="hs-sec-lbl">{t.quickActions}</span></div>
             <div className="hs-act-g">
               {[
                 {icon:'✍️',bg:'rgba(196,114,74,.1)',title:'Log a Memory',desc:'Capture a moment for this story',fn:()=>setShowAddMem(true)},
@@ -625,11 +627,11 @@ export default function Dashboard() {
             </div>
 
             <div className="hs-sec-row">
-              <span className="hs-sec-lbl">Recent Memories</span>
-              {memories.length>4&&<button className="btn-ghost" style={{fontSize:11,padding:'5px 12px'}} onClick={()=>setView('memories')}>View all →</button>}
+              <span className="hs-sec-lbl">{t.recentMemories}</span>
+              {memories.length>4&&<button className="btn-ghost" style={{fontSize:11,padding:'5px 12px'}} onClick={()=>setView('memories')}>{t.viewAll}</button>}
             </div>
             {memories.length===0
-              ? <div className="hs-empty"><div className="hs-empty-icon">🌸</div><div className="hs-empty-title">The first memory is waiting</div><div className="hs-empty-desc">Even the smallest moment becomes part of this story forever.</div></div>
+              ? <div className="hs-empty"><div className="hs-empty-icon">🌸</div><div className="hs-empty-title">{t.noMemoriesTitle}</div><div className="hs-empty-desc">{t.noMemoriesDesc}</div></div>
               : <div className="hs-mem-feed">{memories.slice(0,4).map(m=>(
                   <div key={m.id} className="hs-mem-item">
                     <div className="hs-mem-stripe"/>
@@ -647,11 +649,11 @@ export default function Dashboard() {
         {activeSpace && view==='memories' && (
           <div className="hs-content hs-stagger">
             <div className="hs-sec-row">
-              <span className="hs-sec-lbl">All Memories · {memories.length}</span>
-              <button className="btn-ghost" style={{fontSize:'11px',padding:'6px 14px'}} onClick={()=>setShowAddMem(true)}>+ Add</button>
+              <span className="hs-sec-lbl">{t.allMemories(memories.length)}</span>
+              <button className="btn-ghost" style={{fontSize:'11px',padding:'6px 14px'}} onClick={()=>setShowAddMem(true)}>{t.add}</button>
             </div>
             {memories.length===0
-              ? <div className="hs-empty"><div className="hs-empty-icon">🌸</div><div className="hs-empty-title">No memories yet</div><div className="hs-empty-desc">Start logging moments — big or small, they all matter.</div></div>
+              ? <div className="hs-empty"><div className="hs-empty-icon">🌸</div><div className="hs-empty-title">{t.noMemoriesPageTitle}</div><div className="hs-empty-desc">{t.noMemoriesPageDesc}</div></div>
               : <div className="hs-mem-feed">{memories.map(m=>(
                   <div key={m.id} className="hs-mem-item">
                     <div className="hs-mem-stripe"/>
@@ -668,9 +670,9 @@ export default function Dashboard() {
         {/* STORY */}
         {activeSpace && view==='story' && (
           <div className="hs-content hs-stagger">
-            <div className="hs-sec-row"><span className="hs-sec-lbl">The Story of {activeSpace.name}</span></div>
+            <div className="hs-sec-row"><span className="hs-sec-lbl">{t.theStoryOf(activeSpace.name)}</span></div>
             {memories.length===0
-              ? <div className="hs-empty"><div className="hs-empty-icon">📖</div><div className="hs-empty-title">No chapters yet</div><div className="hs-empty-desc">Add some memories first, then let AI weave them into your story.</div></div>
+              ? <div className="hs-empty"><div className="hs-empty-icon">📖</div><div className="hs-empty-title">{t.noChaptersTitle}</div><div className="hs-empty-desc">{t.noChaptersDesc}</div></div>
               : <div style={{background:'#fff',border:'1px solid var(--ivory3)',borderRadius:'var(--r)',padding:'52px 44px',textAlign:'center',boxShadow:'var(--shmd)'}}>
                   {activeSpace.cartoon_url&&<img src={activeSpace.cartoon_url} alt="" style={{width:76,height:76,borderRadius:'50%',objectFit:'cover',border:'3px solid var(--parchment)',display:'block',margin:'0 auto 18px'}}/>}
                   <div style={{fontFamily:'var(--serif)',fontSize:32,fontWeight:600,color:'var(--ink)',marginBottom:7}}>{activeSpace.name}</div>
@@ -686,12 +688,12 @@ export default function Dashboard() {
         <nav className="hs-mob-nav">
           <div className="hs-mob-nav-inner">
             {activeSpace && <>
-              {[{id:'home',icon:'⌂',label:'Home'},{id:'memories',icon:'🌸',label:'Memories'},{id:'story',icon:'📖',label:'Story'}].map(n=>(
+              {[{id:'home',icon:'⌂',label:t.dashboard},{id:'memories',icon:'🌸',label:t.memories},{id:'story',icon:'📖',label:t.story}].map(n=>(
                 <button key={n.id} className={`hs-mob-nav-item ${view===n.id?'active':''}`} onClick={()=>setView(n.id)}>
                   <span>{n.icon}</span><span>{n.label}</span>
                 </button>
               ))}
-              <button className="hs-mob-nav-item" onClick={()=>setShowAddMem(true)}><span>✦</span><span>Memory</span></button>
+              <button className="hs-mob-nav-item" onClick={()=>setShowAddMem(true)}><span>✦</span><span>{t.addMemory}</span></button>
             </>}
             {!activeSpace&&<button className="hs-mob-nav-item active" onClick={()=>setShowNew(true)}><span>＋</span><span>New Space</span></button>}
           </div>
@@ -702,30 +704,30 @@ export default function Dashboard() {
       {showNewSpace && (
         <div className="hs-overlay" onClick={()=>setShowNew(false)}>
           <div className="hs-modal" onClick={e=>e.stopPropagation()}>
-            <div className="hs-modal-hd"><div className="hs-modal-bar"/><h2 className="hs-modal-title">Create a <em>Space</em></h2><p className="hs-modal-desc">Name it anything. A child, a couple, a friendship, yourself.</p></div>
+            <div className="hs-modal-hd"><div className="hs-modal-bar"/><h2 className="hs-modal-title">{t.createSpace}</h2><p className="hs-modal-desc">{t.createSpaceDesc}</p></div>
             <div className="hs-modal-body">
               {error&&<div className="hs-err">⚠ {error}</div>}
-              <label className="hs-lbl">What kind of story?</label>
+              <label className="hs-lbl">{t.whatKindOfStory}</label>
               <div className="hs-type-grid">
-                {SPACE_TYPES.map(t=>(
-                  <button key={t.id} className={`hs-type-btn ${nsType===t.id?'sel':''}`} onClick={()=>setNsType(t.id)}>
-                    <span className="hs-type-emoji">{t.emoji}</span>
-                    <span className="hs-type-label">{t.label}</span>
-                    <span className="hs-type-desc">{t.desc}</span>
+                {SPACE_TYPES.map(st=>(
+                  <button key={st.id} className={`hs-type-btn ${nsType===st.id?'sel':''}`} onClick={()=>setNsType(st.id)}>
+                    <span className="hs-type-emoji">{st.emoji}</span>
+                    <span className="hs-type-label">{(t.spaceTypes[st.id]||st).label}</span>
+                    <span className="hs-type-desc">{(t.spaceTypes[st.id]||st).desc}</span>
                   </button>
                 ))}
               </div>
-              <label className="hs-lbl">Space Name</label>
+              <label className="hs-lbl">{t.spaceName}</label>
               <input className="hs-input" placeholder={nsType==='child'?"e.g. Ivaan's Story":nsType==='couple'?"e.g. Me & Sara":"e.g. Our Story"} value={nsName} onChange={e=>setNsName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&createSpace()}/>
               {(nsType==='child'||nsType==='self')&&<>
-                <label className="hs-lbl">Subject Name</label>
+                <label className="hs-lbl">{t.subjectName}</label>
                 <input className="hs-input" placeholder="e.g. Ivaan" value={nsSubject} onChange={e=>setNsSubject(e.target.value)}/>
-                <label className="hs-lbl">Date of Birth (optional)</label>
+                <label className="hs-lbl">{t.dateOfBirth}</label>
                 <input className="hs-input" type="date" value={nsDob} onChange={e=>setNsDob(e.target.value)}/>
               </>}
               <div className="hs-modal-btns">
-                <button className="hs-btn-save" onClick={createSpace} disabled={saving||!nsName.trim()}>{saving?'Creating…':'Create Space →'}</button>
-                <button className="hs-btn-cancel" onClick={()=>{setShowNew(false);setError('');}}>Cancel</button>
+                <button className="hs-btn-save" onClick={createSpace} disabled={saving||!nsName.trim()}>{saving?t.creating:t.createSpaceBtn}</button>
+                <button className="hs-btn-cancel" onClick={()=>{setShowNew(false);setError('');}}>{t.cancel}</button>
               </div>
             </div>
           </div>
@@ -739,19 +741,19 @@ export default function Dashboard() {
             <div className="hs-modal-hd"><div className="hs-modal-bar"/><h2 className="hs-modal-title">Log a <em>memory</em></h2><p className="hs-modal-desc">Even the smallest moment becomes part of this story forever.</p></div>
             <div className="hs-modal-body">
               {error&&<div className="hs-err">⚠ {error}</div>}
-              <label className="hs-lbl">Who is sharing?</label>
-              <input className="hs-input" placeholder="Papa, Mama, Nana…" value={memAuthor} onChange={e=>setMemAuthor(e.target.value)}/>
-              <label className="hs-lbl">When did this happen?</label>
+              <label className="hs-lbl">{t.whoIsSharing}</label>
+              <input className="hs-input" placeholder={t.whoIsSharingPlaceholder} value={memAuthor} onChange={e=>setMemAuthor(e.target.value)}/>
+              <label className="hs-lbl">{t.whenDidThisHappen}</label>
               <input className="hs-input" type="date" value={memDate||new Date().toISOString().split('T')[0]} max={new Date().toISOString().split('T')[0]} onChange={e=>setMemDate(e.target.value)}/>
-              <label className="hs-lbl">What happened?</label>
-              <textarea className="hs-textarea" placeholder="Describe the moment…" value={memText} onChange={e=>setMemText(e.target.value)}/>
-              <label className="hs-lbl">Photo (optional)</label>
+              <label className="hs-lbl">{t.whatHappened}</label>
+              <textarea className="hs-textarea" placeholder={t.whatHappenedPlaceholder} value={memText} onChange={e=>setMemText(e.target.value)}/>
+              <label className="hs-lbl">{t.photoOptional}</label>
               {memPreview
                 ? <div style={{position:'relative',marginBottom:16}}><img src={memPreview} style={{width:'100%',maxHeight:190,objectFit:'cover',borderRadius:10}} alt=""/><button onClick={()=>{setMemPhoto(null);setMemPrev(null);}} style={{position:'absolute',top:8,right:8,background:'rgba(44,26,14,.65)',color:'white',border:'none',borderRadius:'50%',width:26,height:26,cursor:'pointer',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center'}}>×</button></div>
-                : <label className="hs-upload"><span style={{fontSize:26}}>📷</span><span style={{fontSize:13,color:'var(--ink3)',fontWeight:500}}>Tap to add a photo</span><input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(f){setMemPhoto(f);setMemPrev(URL.createObjectURL(f));}}}/></label>}
+                : <label className="hs-upload"><span style={{fontSize:26}}>📷</span><span style={{fontSize:13,color:'var(--ink3)',fontWeight:500}}>{t.tapToAddPhoto}</span><input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(f){setMemPhoto(f);setMemPrev(URL.createObjectURL(f));}}}/></label>}
               <div className="hs-modal-btns">
-                <button className="hs-btn-save" onClick={saveMemory} disabled={saving||!memText.trim()}>{saving?'Saving…':'Save Memory →'}</button>
-                <button className="hs-btn-cancel" onClick={()=>{setShowAddMem(false);setError('');setMemPhoto(null);setMemPrev(null);}}>Cancel</button>
+                <button className="hs-btn-save" onClick={saveMemory} disabled={saving||!memText.trim()}>{saving?t.saving:t.saveMemory}</button>
+                <button className="hs-btn-cancel" onClick={()=>{setShowAddMem(false);setError('');setMemPhoto(null);setMemPrev(null);}}>{t.cancel}</button>
               </div>
             </div>
           </div>
@@ -765,7 +767,7 @@ export default function Dashboard() {
             <div className="hs-modal-hd"><div className="hs-modal-bar"/><h2 className="hs-modal-title">🎨 Cartoon <em>Avatar</em></h2><p className="hs-modal-desc">Transform a photo into a Pixar-style illustration.</p></div>
             <div className="hs-modal-body">
               {cartoonizing&&<div style={{textAlign:'center',padding:'32px 0'}}><div style={{width:44,height:44,borderRadius:'50%',border:'3px solid var(--parchment)',borderTopColor:'var(--terra)',animation:'hs-spin 1s linear infinite',margin:'0 auto 14px'}}/><div style={{fontFamily:'var(--serif)',fontSize:18,color:'var(--ink)'}}>Creating the cartoon…</div></div>}
-              {!cartoonizing&&!cartoonPreview&&(<><label className="hs-upload" style={{padding:40}}><span style={{fontSize:36}}>📷</span><span style={{fontFamily:'var(--serif)',fontSize:15}}>Upload a photo</span><span style={{fontSize:11.5,color:'var(--ink5)',textAlign:'center'}}>Clear, front-facing works best</span><input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(f){setCartoonPhoto(f);setCartoonPrev(URL.createObjectURL(f));}}}/></label><button className="hs-btn-cancel" style={{width:'100%'}} onClick={()=>setShowCartoon(false)}>Cancel</button></>)}
+              {!cartoonizing&&!cartoonPreview&&(<><label className="hs-upload" style={{padding:40}}><span style={{fontSize:36}}>📷</span><span style={{fontFamily:'var(--serif)',fontSize:15}}>Upload a photo</span><span style={{fontSize:11.5,color:'var(--ink5)',textAlign:'center'}}>Clear, front-facing works best</span><input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(f){setCartoonPhoto(f);setCartoonPrev(URL.createObjectURL(f));}}}/></label><button className="hs-btn-cancel" style={{width:'100%'}} onClick={()=>setShowCartoon(false)}>{t.cancel}</button></>)}
               {!cartoonizing&&cartoonPreview&&(<><div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:18,margin:'16px 0 22px'}}><img src={cartoonPreview} alt="" style={{width:100,height:100,borderRadius:'50%',objectFit:'cover',border:'3px solid var(--parchment)'}}/><span style={{fontSize:22,color:'var(--terra)'}}>→</span><div style={{width:100,height:100,borderRadius:'50%',background:'var(--ivory2)',border:'2px dashed var(--parchment)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:30}}>✨</div></div><div className="hs-modal-btns"><button className="hs-btn-save" onClick={generateCartoon}>✨ Generate</button><button className="hs-btn-cancel" onClick={()=>{setCartoonPhoto(null);setCartoonPrev(null);}}>Change Photo</button></div></>)}
             </div>
           </div>
@@ -776,11 +778,11 @@ export default function Dashboard() {
       {showInvite && (
         <div className="hs-overlay" onClick={()=>setShowInvite(false)}>
           <div className="hs-modal" onClick={e=>e.stopPropagation()}>
-            <div className="hs-modal-hd"><div className="hs-modal-bar"/><h2 className="hs-modal-title">Invite <em>Someone</em></h2><p className="hs-modal-desc">Share a magic link to let anyone add memories.</p></div>
+            <div className="hs-modal-hd"><div className="hs-modal-bar"/><h2 className="hs-modal-title">{t.inviteSomeoneTitle}</h2><p className="hs-modal-desc">{t.inviteSomeoneDesc}</p></div>
             <div className="hs-modal-body">
               {!inviteLink
-                ? <div className="hs-modal-btns"><button className="hs-btn-save" onClick={generateInvite}>Generate Invite Link</button><button className="hs-btn-cancel" onClick={()=>setShowInvite(false)}>Cancel</button></div>
-                : <><div className="hs-invite-box">{inviteLink}</div><div className="hs-modal-btns"><button className="hs-btn-save" onClick={()=>{navigator.clipboard.writeText(inviteLink);alert('Copied!');}}>📋 Copy Link</button><button className="hs-btn-cancel" onClick={()=>setShowInvite(false)}>Close</button></div></>}
+                ? <div className="hs-modal-btns"><button className="hs-btn-save" onClick={generateInvite}>{t.generateInviteLink}</button><button className="hs-btn-cancel" onClick={()=>setShowInvite(false)}>{t.cancel}</button></div>
+                : <><div className="hs-invite-box">{inviteLink}</div><div className="hs-modal-btns"><button className="hs-btn-save" onClick={()=>{navigator.clipboard.writeText(inviteLink);alert(t.copied);}}>{t.copyLink}</button><button className="hs-btn-cancel" onClick={()=>setShowInvite(false)}>{t.close}</button></div></>}
             </div>
           </div>
         </div>

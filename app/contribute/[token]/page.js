@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import StoryReader from '../../dashboard/StoryReader';
+import { useTranslation, LangToggle } from '../../../lib/i18n/LanguageContext';
 
 export default function ContributePage() {
   const { token } = useParams();
@@ -19,6 +20,7 @@ export default function ContributePage() {
   const [saving, setSaving]           = useState(false);
   const [generating, setGenerating]   = useState(false);
   const [error, setError]             = useState('');
+  const { t } = useTranslation();
 
   const [memText,   setMemText]   = useState('');
   const [memDate,   setMemDate]   = useState('');
@@ -142,8 +144,9 @@ export default function ContributePage() {
           <span style={{fontFamily:'Lora,Georgia,serif',fontSize:15,fontWeight:600,color:'#2C1A0E'}}>{spaceName}</span>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
-          <div style={{fontSize:11,color:'#8C6B4E',background:'rgba(196,114,74,.08)',padding:'4px 10px',borderRadius:20}}>
-            👤 {contributor?.name}
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <LangToggle/>
+            <div style={{fontSize:11,color:'#8C6B4E',background:'rgba(196,114,74,.08)',padding:'4px 10px',borderRadius:20}}>👤 {contributor?.name}</div>
           </div>
         </div>
       </header>
@@ -168,12 +171,12 @@ export default function ContributePage() {
             <img src={space.cartoon_url} alt="" style={{position:'absolute',right:24,top:'50%',transform:'translateY(-50%)',width:64,height:64,borderRadius:'50%',objectFit:'cover',border:'2px solid rgba(255,255,255,.12)',opacity:.9}}/>
           )}
           <div style={{fontSize:9,letterSpacing:3.5,textTransform:'uppercase',color:'rgba(196,114,74,.65)',marginBottom:8,position:'relative',zIndex:1}}>
-            The Story · {totalCount} memories from the family
+            {t.theStory} · {t.totalMemories(totalCount)}
           </div>
           {generating
             ? <div style={{display:'flex',alignItems:'center',gap:10,position:'relative',zIndex:1}}><div style={{width:16,height:16,borderRadius:'50%',border:'2px solid rgba(250,247,242,.2)',borderTopColor:'rgba(250,247,242,.8)',animation:'spin .8s linear infinite'}}/><span style={{fontFamily:'Lora,Georgia,serif',fontSize:20,color:'rgba(250,247,242,.9)'}}>Writing the story…</span></div>
             : <><div style={{fontFamily:'Lora,Georgia,serif',fontSize:'clamp(18px,4vw,24px)',fontWeight:600,color:'rgba(250,247,242,.95)',marginBottom:6,position:'relative',zIndex:1}}>Read <em style={{fontStyle:'italic',color:'#E8956A'}}>{spaceName}</em></div>
-                <div style={{fontSize:12.5,color:'rgba(250,247,242,.38)',position:'relative',zIndex:1,lineHeight:1.6}}>{totalCount===0?'Add memories first — then read the story together.':'AI weaves all contributions into one story. Tap to read.'}</div>
+                <div style={{fontSize:12.5,color:'rgba(250,247,242,.38)',position:'relative',zIndex:1,lineHeight:1.6}}>{totalCount===0?'{t.addMemoriesFirst}':'{t.aiWeavesAll}'}</div>
                 {totalCount>0&&<div style={{display:'inline-flex',alignItems:'center',gap:8,marginTop:16,background:'rgba(255,255,255,.09)',border:'1px solid rgba(255,255,255,.13)',borderRadius:40,padding:'8px 18px',fontFamily:'Plus Jakarta Sans,sans-serif',fontSize:12,color:'rgba(250,247,242,.8)',position:'relative',zIndex:1}}>Read the story <span>→</span></div>}</>}
         </button>
 
@@ -187,9 +190,9 @@ export default function ContributePage() {
             <span style={{fontSize:20}}>🤫</span>
             <div>
               <div style={{fontSize:13,fontWeight:600,color:'#2C1A0E'}}>
-                {othersCount} {othersCount===1?'memory':'memories'} from others — hidden until the story is told
+                {t.othersHidden(othersCount)}
               </div>
-              <div style={{fontSize:11.5,color:'#8C6B4E',marginTop:2}}>Read the story above to see what everyone contributed</div>
+              <div style={{fontSize:11.5,color:'#8C6B4E',marginTop:2}}>{t.othersHiddenDesc}</div>
             </div>
           </div>
         )}
@@ -206,7 +209,7 @@ export default function ContributePage() {
         >
           <div style={{width:44,height:44,borderRadius:12,background:'rgba(196,114,74,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>✍️</div>
           <div>
-            <div style={{fontFamily:'Lora,Georgia,serif',fontSize:16,fontWeight:600,color:'#2C1A0E',marginBottom:3}}>Add a memory</div>
+            <div style={{fontFamily:'Lora,Georgia,serif',fontSize:16,fontWeight:600,color:'#2C1A0E',marginBottom:3}}>{t.addAMemory}</div>
             <div style={{fontSize:12.5,color:'#8C6B4E',lineHeight:1.5}}>Your contribution is private until the story is told</div>
           </div>
           <span style={{marginLeft:'auto',color:'#C4724A',fontSize:18}}>→</span>
@@ -216,7 +219,7 @@ export default function ContributePage() {
         <div style={{marginBottom:12,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <div style={{fontSize:9.5,letterSpacing:3,textTransform:'uppercase',color:'#C4724A',fontWeight:600,display:'flex',alignItems:'center',gap:8}}>
             <span style={{width:18,height:1.5,background:'#C4724A',display:'inline-block',borderRadius:2}}/>
-            My Memories · {myMemories.length}
+            {t.myMemories(myMemories.length)}
           </div>
         </div>
 
@@ -255,7 +258,7 @@ export default function ContributePage() {
               <h2 style={{fontFamily:'Lora,Georgia,serif',fontSize:22,fontWeight:600,color:'#2C1A0E',marginBottom:4}}>
                 Add a <em style={{fontStyle:'italic',color:'#C4724A'}}>memory</em>
               </h2>
-              <p style={{fontSize:12.5,color:'#8C6B4E',marginBottom:20,lineHeight:1.6}}>Only you can see this until the story is generated.</p>
+              <p style={{fontSize:12.5,color:'#8C6B4E',marginBottom:20,lineHeight:1.6}}>{t.addAMemoryDesc}</p>
             </div>
             <div style={{padding:'0 24px 32px'}}>
               {error&&<div style={{background:'rgba(196,50,50,.07)',border:'1px solid rgba(196,50,50,.2)',borderRadius:8,padding:'10px 14px',fontSize:12.5,color:'#b03030',marginBottom:14}}>{error}</div>}
@@ -270,7 +273,7 @@ export default function ContributePage() {
               />
               <div style={{display:'flex',gap:10}}>
                 <button onClick={saveMemory} disabled={saving||!memText.trim()} style={{flex:1,padding:'13px',background:saving||!memText.trim()?'rgba(44,26,14,.3)':'#2C1A0E',color:'rgba(250,247,242,.95)',border:'none',borderRadius:10,fontFamily:'Plus Jakarta Sans,sans-serif',fontSize:12,fontWeight:600,letterSpacing:.8,textTransform:'uppercase',cursor:saving||!memText.trim()?'not-allowed':'pointer',transition:'background .25s'}}>
-                  {saving?'Saving…':'Save Memory →'}
+                  {saving?t.saving:t.saveMemory}
                 </button>
                 <button onClick={()=>{setShowAddMem(false);setError('');}} style={{padding:'13px 18px',background:'transparent',border:'1.5px solid #EAE0D3',borderRadius:10,fontFamily:'Plus Jakarta Sans,sans-serif',fontSize:13,color:'#8C6B4E',cursor:'pointer'}}>
                   Cancel

@@ -36,7 +36,8 @@ function safeParseJSON(raw = '') {
 
 export async function POST(request) {
   try {
-    const { spaceId, regenerate } = await request.json();
+    const { spaceId, regenerate, lang } = await request.json();
+    const writingLang = lang === 'sv' ? 'Swedish' : 'English';
     if (!spaceId) return Response.json({ error: 'spaceId required' }, { status: 400 });
 
     // ── Load space ──────────────────────────────────────────
@@ -90,7 +91,7 @@ export async function POST(request) {
 MEMORIES FROM THE FAMILY (all contributors, ordered by date):
 ${memoryLines}${priorContext}
 
-Write Chapter ${nextChapterNum} of this story. 
+Write Chapter ${nextChapterNum} of this story in ${writingLang}. 
 - Weave memories from MULTIPLE contributors together naturally
 - Do not list memories mechanically — transform them into flowing prose
 - 3–5 rich paragraphs, literary quality, emotionally resonant
