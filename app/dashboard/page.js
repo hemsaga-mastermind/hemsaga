@@ -373,23 +373,96 @@ export default function Dashboard() {
         .hs-type-desc{font-size:10px;color:var(--ink4);margin-top:2px;line-height:1.4;display:block;}
         .hs-invite-box{background:var(--ivory);border:1.5px solid var(--parchment);border-radius:var(--rsm);padding:12px 14px;font-family:monospace;font-size:12px;color:var(--ink2);word-break:break-all;line-height:1.6;margin-bottom:14px;}
         .hs-err{background:rgba(196,50,50,.07);border:1px solid rgba(196,50,50,.2);border-radius:8px;padding:10px 14px;font-size:12.5px;color:#b03030;margin-bottom:14px;}
-        .hs-mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(250,247,242,.96);backdrop-filter:blur(16px);border-top:1px solid var(--ivory3);z-index:300;padding:8px 0 max(8px,env(safe-area-inset-bottom));}
-        .hs-mob-nav-inner{display:flex;justify-content:space-around;align-items:center;}
-        .hs-mob-nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 12px;border:none;background:none;cursor:pointer;font-family:var(--sans);font-size:10px;color:var(--ink4);transition:color .2s;min-width:52px;}
-        .hs-mob-nav-item.active{color:var(--terra);}
-        .hs-mob-nav-item span:first-child{font-size:20px;}
-
-        @media(max-width:768px){
-          .hs-sb{display:none;} .hs-main{margin-left:0;} .hs-mob-nav{display:block;}
-          .hs-content{padding:20px 16px 100px;}
-          .hs-topbar{padding:0 16px;}
-          .hs-stats-g{grid-template-columns:repeat(2,1fr);}
-          .hs-act-g{grid-template-columns:1fr 1fr;}
-          .hs-hero{padding:28px 24px;} .hs-hero-avatar{display:none;}
-          .hs-modal-hd,.hs-modal-body{padding-left:24px;padding-right:24px;}
-          .hs-modal-bar{margin-left:-24px;margin-right:-24px;}
+        .hs-mob-nav{
+          display:none;position:fixed;bottom:0;left:0;right:0;
+          background:rgba(250,247,242,.97);
+          backdrop-filter:blur(20px) saturate(180%);
+          -webkit-backdrop-filter:blur(20px) saturate(180%);
+          border-top:1px solid rgba(44,26,14,.08);
+          z-index:300;
+          padding:6px 0 max(10px,env(safe-area-inset-bottom));
+          box-shadow:0 -4px 20px rgba(44,26,14,.06);
         }
-        @media(max-width:480px){.hs-act-g{grid-template-columns:1fr;}.hs-type-grid{grid-template-columns:repeat(2,1fr);}}
+        .hs-mob-nav-inner{display:flex;justify-content:space-around;align-items:center;max-width:480px;margin:0 auto;}
+        .hs-mob-nav-item{
+          display:flex;flex-direction:column;align-items:center;gap:2px;
+          padding:6px 10px;border:none;background:none;cursor:pointer;
+          font-family:var(--sans);font-size:9.5px;font-weight:500;
+          color:var(--ink4);transition:all .18s;min-width:56px;
+          border-radius:12px;
+        }
+        .hs-mob-nav-item.active{color:var(--terra);}
+        .hs-mob-nav-item.active span:first-child{transform:scale(1.15);}
+        .hs-mob-nav-item span:first-child{font-size:22px;transition:transform .2s;display:block;}
+        /* FAB — floating add button on mobile */
+        .hs-mob-fab{
+          display:none;position:fixed;bottom:max(80px,calc(70px + env(safe-area-inset-bottom)));
+          right:18px;width:52px;height:52px;border-radius:50%;
+          background:var(--espresso);color:white;border:none;
+          font-size:22px;cursor:pointer;z-index:301;
+          box-shadow:0 6px 20px rgba(44,26,14,.3);
+          display:none;align-items:center;justify-content:center;
+          transition:all .2s;
+        }
+        .hs-mob-fab:hover{background:var(--terra);transform:scale(1.08);}
+
+        /* ── TABLET ── */
+        @media(max-width:768px){
+          .hs-sb{display:none;}
+          .hs-main{margin-left:0;width:100%;}
+          .hs-mob-nav{display:block;}
+          /* Topbar */
+          .hs-topbar{padding:0 16px;height:52px;}
+          .hs-greeting{font-size:14px;}
+          /* Content */
+          .hs-content{padding:16px 14px 96px;width:100%;}
+          /* Hero */
+          .hs-hero{padding:24px 20px 28px;border-radius:12px;margin-bottom:20px;}
+          .hs-hero-avatar{display:none;}
+          .hs-hero-eyebrow{font-size:8.5px;margin-bottom:8px;}
+          .hs-hero-title{font-size:20px!important;}
+          .hs-hero-sub{font-size:12px;}
+          .hs-hero-cta{padding:8px 16px;font-size:12px;margin-top:16px;}
+          /* Stats — 2 col on tablet */
+          .hs-stats-g{grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px;}
+          .hs-stat-n{font-size:28px;}
+          .hs-stat-c{padding:16px 14px;}
+          /* Actions — 1 col on tablet */
+          .hs-act-g{grid-template-columns:1fr;gap:10px;margin-bottom:20px;}
+          .hs-act-c{padding:16px 16px;flex-direction:row;align-items:center;gap:14px;}
+          .hs-act-icon{flex-shrink:0;}
+          .hs-act-arrow{display:none;}
+          /* Memories */
+          .hs-mem-text{font-size:15px;}
+          .hs-mem-photo{width:72px;}
+          /* Modals — slide up from bottom */
+          .hs-overlay{align-items:flex-end;padding:0;}
+          .hs-modal{border-radius:20px 20px 0 0;max-width:100%;max-height:94vh;}
+          .hs-modal-hd{padding:20px 20px 0;}
+          .hs-modal-bar{margin:-20px -20px 20px;border-radius:3px 3px 0 0;}
+          .hs-modal-body{padding:12px 20px 32px;}
+          /* Type grid */
+          .hs-type-grid{grid-template-columns:repeat(3,1fr);}
+          /* Setup card */
+          .hs-setup-card{padding:40px 28px;}
+          /* Section label */
+          .hs-sec-row{margin-bottom:12px;}
+        }
+
+        /* ── SMALL PHONES (iPhone SE, older Android) ── */
+        @media(max-width:390px){
+          .hs-content{padding:12px 12px 96px;}
+          .hs-hero{padding:20px 16px 24px;}
+          .hs-hero-title{font-size:18px!important;}
+          .hs-stats-g{grid-template-columns:repeat(2,1fr);gap:8px;}
+          .hs-stat-n{font-size:24px;}
+          .hs-stat-c{padding:14px 12px;}
+          .hs-type-grid{grid-template-columns:repeat(2,1fr);}
+          .hs-modal-body{padding:10px 16px 28px;}
+          .hs-modal-hd{padding:16px 16px 0;}
+          .hs-modal-bar{margin:-16px -16px 16px;}
+          .hs-mem-text{font-size:14px;}
+        }
       `}</style>
 
       {/* SIDEBAR */}
@@ -435,15 +508,25 @@ export default function Dashboard() {
       {/* MAIN */}
       <div className="hs-main">
         <header className="hs-topbar">
-          <span className="hs-greeting">
+          {/* Desktop greeting */}
+          <span className="hs-greeting" style={{display:'none'}} id="hs-desk-greet">
             {activeSpace ? <>{greeting()} — <em>{activeSpace.name}</em></> : <>Welcome to <em>Hemsaga</em></>}
           </span>
+          {/* Mobile: logo + space name */}
+          <div style={{display:'flex',alignItems:'center',gap:8}} id="hs-mob-greet">
+            <div style={{width:26,height:26,background:'linear-gradient(135deg,#C4724A,#E8956A)',borderRadius:7,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,flexShrink:0}}>📖</div>
+            <span style={{fontFamily:'var(--serif)',fontSize:14,fontWeight:600,color:'var(--ink)',maxWidth:'45vw',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+              {activeSpace ? activeSpace.name : 'Hemsaga'}
+            </span>
+          </div>
+          <style>{`@media(min-width:769px){#hs-desk-greet{display:flex!important;}#hs-mob-greet{display:none!important;}}`}</style>
           <div className="hs-topbar-right">
             {activeSpace && <>
-              <button className="btn-ghost" onClick={()=>setShowAddMem(true)}>+ Memory</button>
-              <button className="btn-primary" onClick={()=>generateStory(false)} disabled={generating||memories.length===0}>
-                {generating?<><div className="hs-hero-spinner" style={{width:12,height:12,borderWidth:'1.5px'}}/>Writing…</>:<>✦ Generate</>}
+              <button className="btn-ghost" onClick={()=>setShowAddMem(true)} style={{}} id="hs-desk-add">+ Memory</button>
+              <button className="btn-primary" onClick={()=>generateStory(false)} disabled={generating||memories.length===0} style={{padding:'7px 14px',fontSize:'11.5px'}}>
+                {generating?<><div className="hs-hero-spinner" style={{width:11,height:11,borderWidth:'1.5px'}}/>Writing…</>:<>✦ Generate</>}
               </button>
+              <style>{`@media(max-width:768px){#hs-desk-add{display:none!important;}}`}</style>
             </>}
           </div>
         </header>
