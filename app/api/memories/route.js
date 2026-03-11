@@ -1,12 +1,7 @@
 // app/api/memories/route.js
 // Private photos: generates signed URLs on every read (1hr expiry)
 // Logs every access for audit trail
-import { createClient } from '@supabase/supabase-js';
-
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { getDb } from '../../../lib/supabase-server';
 
 const SIGNED_URL_EXPIRY = 3600; // 1 hour in seconds
 
@@ -14,6 +9,7 @@ async function signPhotoUrl(path) {
   if (!path) return null;
   // Already a full URL (legacy) — return as-is for backwards compat
   if (path.startsWith('http')) return path;
+  const db = getDb();
   const { data, error } = await db.storage
     .from('memories')
     .createSignedUrl(path, SIGNED_URL_EXPIRY);
@@ -31,6 +27,7 @@ export async function GET(request) {
 
     if (!spaceId) return Response.json({ error: 'spaceId required' }, { status: 400 });
 
+    const db = getDb();
     let query = db.from('memories').select('*')
       .eq('space_id', spaceId)
       .order('memory_date', { ascending: false });
@@ -74,6 +71,7 @@ export async function GET(request) {
 // photo_url now stores the storage PATH, not a public URL
 export async function POST(request) {
   try {
+    const db = getDb();
     const body = await request.json();
     const { spaceId, contributorId, author, content, memory_date, photo_path, prompt_id } = body;
 

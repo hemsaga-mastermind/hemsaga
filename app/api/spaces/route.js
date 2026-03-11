@@ -1,14 +1,10 @@
 // app/api/spaces/route.js
-import { createClient } from '@supabase/supabase-js';
-
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { getDb } from '../../lib/supabase-server';
 
 // GET /api/spaces?userId=xxx
 export async function GET(request) {
   try {
+    const db = getDb();
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     if (!userId) return Response.json({ error: 'userId required' }, { status: 400 });
@@ -24,6 +20,7 @@ export async function GET(request) {
 // POST /api/spaces — create space
 export async function POST(request) {
   try {
+    const db = getDb();
     const body = await request.json();
     const { userId, name, space_type, cover_emoji, subject_name, subject_dob } = body;
     if (!userId || !name) return Response.json({ error: 'userId and name required' }, { status: 400 });
@@ -45,6 +42,7 @@ export async function POST(request) {
 // PATCH /api/spaces — update cartoon_url, reveal_at, etc.
 export async function PATCH(request) {
   try {
+    const db = getDb();
     const body = await request.json();
     const { spaceId, cartoon_url, reveal_at } = body;
     if (!spaceId) return Response.json({ error: 'spaceId required' }, { status: 400 });
