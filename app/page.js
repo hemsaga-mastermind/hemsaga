@@ -232,7 +232,7 @@ export default function Home() {
           <a href="#how">How it works</a>
           <a href="#family">Family</a>
           <a href="#story">Sample Story</a>
-          <a href="/auth" className="btn-nav">Begin Your Story</a>
+          <a href="/auth" className="btn-nav">Sign in</a>
         </div>
       </nav>
 
@@ -242,20 +242,19 @@ export default function Home() {
         <div className="blob blob-2" />
         <div className="blob blob-3" />
 
-        <div className="hero-tag">Every family has a story worth telling</div>
+        <div className="hero-tag">Private beta — invite only</div>
 
         <h1 className="hero-title">
           Turn your family's <em>memories</em> into a living storybook
         </h1>
 
         <p className="hero-subtitle">
-          Every parent logs a moment. Every grandparent shares their love.
-          Hemsaga weaves it all into a beautiful story your child
-          will treasure forever.
+          Right now Hemsaga is in private beta. You can try it only with an invite link
+          from someone who has a space — use their link to add your memories. Space owners can sign in below.
         </p>
 
         <div className="hero-buttons">
-          <a href="/auth" className="btn-primary">Begin Your Story &rarr;</a>
+          <a href="/auth" className="btn-ghost">Sign in (space owners)</a>
           <a href="#story" className="btn-ghost">See a Sample</a>
         </div>
 
@@ -340,7 +339,9 @@ export default function Home() {
               everyone who loves them — parents near and grandparents far.
               Hemsaga brings every voice together into one beautiful narrative.
             </p>
-            <a href="/auth" className="btn-primary">Start Your Family Story</a>
+            <p className="family-invite-note" style={{ marginTop: 20, fontSize: 14, color: 'var(--text-mid)' }}>
+              In private beta — join with an invite link from a space owner. <a href="/auth" style={{ color: 'var(--accent)', fontWeight: 500 }}>Sign in</a> if you already have a space.
+            </p>
           </div>
         </div>
       </div>
@@ -358,14 +359,13 @@ export default function Home() {
 
       {/* CTA */}
       <div className="cta-section reveal">
-        <h2 className="cta-title">Begin your family's <em>saga</em></h2>
+        <h2 className="cta-title">Invite-only for now</h2>
         <p className="cta-subtitle">
-          Free to start. Beautiful forever.<br />
-          Your child's first chapter is waiting to be written.
+          We're testing with a small group. Join with an invite link from a space owner,
+          or <a href="/auth" style={{ color: 'var(--accent)', fontWeight: 500 }}>sign in</a> if you run a space.
         </p>
         <div className="cta-buttons">
-          <a href="/auth" className="btn-cta-primary">Start for Free &rarr;</a>
-          <a href="#how" className="btn-cta-ghost">See how it works</a>
+          <a href="#how" className="btn-cta-primary">See how it works</a>
         </div>
       </div>
 

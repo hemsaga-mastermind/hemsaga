@@ -274,7 +274,10 @@ export default function AuthPage() {
           <p className="auth-form-subtitle">
             {isLogin
               ? "Your family's story is waiting for you."
-              : "Create your family account and start Ivaan's story today."}
+              : "Create your family account and start your story today."}
+          </p>
+          <p style={{ fontSize: 12, color: '#A8917E', marginBottom: 24, lineHeight: 1.5 }}>
+            Hemsaga is in private beta. Sign in if you have an account. New sign-ups are for invited testers only.
           </p>
 
           {message && <div className="message">{message}</div>}
