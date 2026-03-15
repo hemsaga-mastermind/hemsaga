@@ -1,6 +1,7 @@
 // POST /api/story/tweak — weave a memory into an existing chapter and update it
 import { getDb } from '../../../../lib/supabase-server';
 import { getTargetChapterForMemory } from '../../../../lib/story/placement';
+import { getWritingLanguage } from '../../../../lib/langForAi.js';
 
 function safeParseJSON(raw = '') {
   let cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -41,7 +42,7 @@ export async function POST(request) {
     const chapter = chapters.find(c => c.chapter_number === targetChapterNum);
     if (!chapter) return Response.json({ error: `Chapter ${targetChapterNum} not found` }, { status: 404 });
 
-    const writingLang = lang === 'sv' ? 'Swedish' : 'English';
+    const writingLang = getWritingLanguage(lang);
     const userPrompt = `You are a warm, literary author. Revise the following chapter by weaving in ONE new memory. Keep the same tone and style; do not list the memory mechanically — integrate it naturally into the prose.
 
 CURRENT CHAPTER (Chapter ${chapter.chapter_number} — "${chapter.title}"):

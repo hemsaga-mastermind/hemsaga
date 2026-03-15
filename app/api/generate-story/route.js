@@ -1,5 +1,6 @@
 // app/api/generate-story/route.js
 import { getDb } from '../../../lib/supabase-server';
+import { getWritingLanguage } from '../../../lib/langForAi.js';
 
 // Narrative voice adapted per space type
 const narrativePrompt = {
@@ -33,7 +34,7 @@ export async function POST(request) {
   try {
     const db = getDb();
     const { spaceId, regenerate, lang } = await request.json();
-    const writingLang = lang === 'sv' ? 'Swedish' : 'English';
+    const writingLang = getWritingLanguage(lang);
     if (!spaceId) return Response.json({ error: 'spaceId required' }, { status: 400 });
 
     // ── Load space ──────────────────────────────────────────

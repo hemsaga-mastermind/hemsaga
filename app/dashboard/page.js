@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import StoryReader from './StoryReader';
 import { useTranslation, LangToggle } from '../../lib/i18n/LanguageContext';
 import { getRandomMemoryPrompt } from '../../lib/prompts/memoryPrompts';
+import { fetchJson } from '../../lib/fetchJson';
 
 const SPACE_TYPES = [
   { id:'child',   emoji:'🌟', label:'Child',   desc:'Family story for your little one' },
@@ -104,7 +105,7 @@ export default function Dashboard() {
   const loadSpaces = async (uid) => {
     try {
       const res = await fetch(`/api/spaces?userId=${uid}`);
-      const data = await res.json();
+      const data = await fetchJson(res);
       if (data.error) { console.error('loadSpaces:', data.error); return; }
       setSpaces(data.spaces || []);
       if (data.spaces?.length) {
@@ -116,9 +117,8 @@ export default function Dashboard() {
 
   const loadMemories = async (spaceId, uid) => {
     try {
-      // Owner sees only their own memories — filtered by their user.id as contributorId
       const res = await fetch(`/api/memories?spaceId=${spaceId}&contributorId=${uid}&accessor=owner:${uid}`);
-      const data = await res.json();
+      const data = await fetchJson(res);
       if (data.error) { console.error('loadMemories:', data.error); return; }
       setMemories(data.memories || []);
       setTotalMemCount(data.totalCount || 0);
@@ -169,9 +169,9 @@ export default function Dashboard() {
         fd.append('contributorId', user.id);
         fd.append('type', 'memory');
         const upRes = await fetch('/api/upload', { method: 'POST', body: fd });
-        const upData = await upRes.json();
+        const upData = await fetchJson(upRes).catch(() => ({}));
         if (upData.path) photoPath = upData.path;
-        else console.warn('Photo upload failed:', upData.error);
+        else if (upData.error) console.warn('Photo upload failed:', upData.error);
       }
       const res = await fetch('/api/memories', {
         method: 'POST',
@@ -187,13 +187,15 @@ export default function Dashboard() {
           ...(memoryPromptId != null && { prompt_id: memoryPromptId }),
         }),
       });
-      const data = await res.json();
+      const data = await fetchJson(res);
       if (data.error) { setError(data.error); setSaving(false); return; }
       setMemories(prev => [data.memory, ...prev]);
       setMemText(''); setMemAuthor('Papa'); setMemDate('');
       setMemPhoto(null); setMemPrev(null); setMemoryPromptId(null);
       setLastSavedMemoryId(data.memory.id);
-    } catch (e) { setError(e.message); }
+    } catch (e) {
+      setError(e.message || 'Could not save. Please try again.');
+    }
     setSaving(false);
   };
 
@@ -208,7 +210,7 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ spaceId: activeSpace.id, regenerate, lang }),
       });
-      const data = await res.json();
+      const data = await fetchJson(res);
       if (data.error) {
         setError(`Story generation failed: ${data.error}`);
         console.error('generate-story error:', data.error);
@@ -837,8 +839,9 @@ export default function Dashboard() {
                 </button>
               ))}
               <button className="hs-mob-nav-item" onClick={()=>setShowAddMem(true)}><span>✦</span><span>{t.addMemory}</span></button>
+              <button className="hs-mob-nav-item" onClick={()=>setShowNew(true)}><span>＋</span><span>{t.newSpace}</span></button>
             </>}
-            {!activeSpace&&<button className="hs-mob-nav-item active" onClick={()=>setShowNew(true)}><span>＋</span><span>New Space</span></button>}
+            {!activeSpace&&<button className="hs-mob-nav-item active" onClick={()=>setShowNew(true)}><span>＋</span><span>{t.newSpace}</span></button>}
           </div>
         </nav>
       </div>

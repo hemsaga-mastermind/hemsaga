@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import StoryReader from '../../dashboard/StoryReader';
 import { useTranslation, LangToggle } from '../../../lib/i18n/LanguageContext';
 import { getRandomMemoryPrompt } from '../../../lib/prompts/memoryPrompts';
+import { fetchJson } from '../../../lib/fetchJson';
 
 export default function ContributePage() {
   const { token } = useParams();
@@ -49,17 +50,18 @@ export default function ContributePage() {
 
   const loadAll = async (c) => {
     try {
-      // Load space info
       const sr = await fetch(`/api/spaces/invite?token=${token}`);
-      const sd = await sr.json();
+      const sd = await fetchJson(sr);
       if (sd.space) setSpace(sd.space);
 
-      // Load MY memories only
       const mr = await fetch(`/api/memories?spaceId=${c.spaceId}&contributorId=${c.contributorId}&accessor=contributor:${c.contributorId}`);
-      const md = await mr.json();
+      const md = await fetchJson(mr);
       setMyMemories(md.memories || []);
       setTotalCount(md.totalCount || 0);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      setError(e.message || 'Something went wrong. Please try again.');
+    }
     setLoading(false);
   };
 
@@ -80,12 +82,14 @@ export default function ContributePage() {
           ...(memoryPromptId != null && { prompt_id: memoryPromptId }),
         }),
       });
-      const data = await res.json();
+      const data = await fetchJson(res);
       if (data.error) { setError(data.error); setSaving(false); return; }
       setMyMemories(prev => [data.memory, ...prev]);
       setTotalCount(prev => prev + 1);
       setMemText(''); setMemDate(''); setMemoryPromptId(null); setShowAddMem(false);
-    } catch (e) { setError(e.message); }
+    } catch (e) {
+      setError(e.message || 'Could not save. Please try again.');
+    }
     setSaving(false);
   };
 
@@ -99,7 +103,7 @@ export default function ContributePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ spaceId: contributor.spaceId, regenerate: false }),
       });
-      const data = await res.json();
+      const data = await fetchJson(res);
       if (data.error) {
         setError(`Could not generate story: ${data.error}`);
       } else if (data.chapters?.length) {

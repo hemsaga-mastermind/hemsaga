@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslation } from '../../../lib/i18n/LanguageContext';
+import { fetchJson } from '../../../lib/fetchJson';
 
 export default function JoinPage() {
   const { token } = useParams();
@@ -28,7 +29,7 @@ export default function JoinPage() {
 
     // Load space info from token
     fetch(`/api/spaces/invite?token=${token}`)
-      .then(r => r.json())
+      .then(r => fetchJson(r))
       .then(data => {
         if (data.error) { setNotFound(true); }
         else { setSpace(data.space); }
@@ -48,7 +49,7 @@ export default function JoinPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, displayName: name.trim() }),
       });
-      const data = await res.json();
+      const data = await fetchJson(res);
       if (data.error) { setError(data.error); setJoining(false); return; }
 
       // Save contributor session to localStorage
@@ -63,7 +64,7 @@ export default function JoinPage() {
 
       router.push(`/contribute/${token}`);
     } catch (e) {
-      setError('Something went wrong. Try again.');
+      setError(e.message || 'Something went wrong. Try again.');
       setJoining(false);
     }
   };
