@@ -33,6 +33,12 @@ export default function Dashboard() {
   const [showNewSpace, setShowNew]  = useState(false);
   const [showAddMem, setShowAddMem] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackType, setFeedbackType] = useState('suggestion');
+  const [feedbackContent, setFeedbackContent] = useState('');
+  const [feedbackContact, setFeedbackContact] = useState('');
+  const [feedbackSending, setFeedbackSending] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState(false);
   const [showCartoon, setShowCartoon] = useState(false);
   const [showMobileMenu, setMobileMenu] = useState(false);
   const [showSpacePicker, setShowSpacePicker] = useState(false);
@@ -98,12 +104,12 @@ export default function Dashboard() {
 
   // Lock body scroll when any overlay is open (fixes iOS background scroll)
   useEffect(() => {
-    const modalOpen = showNewSpace || showAddMem || showInvite || showCartoon || showStory || showSpacePicker || !!editMemId;
+    const modalOpen = showNewSpace || showAddMem || showInvite || showCartoon || showStory || showSpacePicker || showFeedback || !!editMemId;
     if (!modalOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
-  }, [showNewSpace, showAddMem, showInvite, showCartoon, showStory, showSpacePicker, editMemId]);
+  }, [showNewSpace, showAddMem, showInvite, showCartoon, showStory, showSpacePicker, showFeedback, editMemId]);
 
   const init = async () => {
     try {
@@ -278,6 +284,30 @@ export default function Dashboard() {
     });
     const data = await res.json();
     if (data.token) setInviteLink(`https://hemsaga.com/join/${data.token}`);
+  };
+
+  const sendFeedback = async () => {
+    if (!feedbackContent.trim()) return;
+    setFeedbackSending(true);
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: feedbackType,
+          content: feedbackContent.trim(),
+          contact_email: feedbackContact.trim() || undefined,
+          user_id: user?.id,
+          space_id: activeSpace?.id,
+        }),
+      });
+      const data = await fetchJson(res);
+      if (data.error) { setError(data.error); setFeedbackSending(false); return; }
+      setFeedbackSent(true);
+      setFeedbackContent('');
+      setFeedbackContact('');
+    } catch (e) { setError(e.message); }
+    setFeedbackSending(false);
   };
 
   /** Clipboard API + execCommand fallback for mobile / older browsers */
@@ -649,6 +679,7 @@ export default function Dashboard() {
             <button className="hs-nav-item" onClick={()=>setShowAddMem(true)}><span className="hs-nav-icon">✦</span>{t.addMemory}</button>
             <button className="hs-nav-item" onClick={()=>{setShowInvite(true);setInviteLink('');}}><span className="hs-nav-icon">👥</span>{t.inviteSomeone}</button>
             <button className="hs-nav-item" onClick={()=>setShowCartoon(true)}><span className="hs-nav-icon">🎨</span>{t.cartoonAvatar}</button>
+            <button className="hs-nav-item" onClick={()=>{ setShowFeedback(true); setFeedbackSent(false); setFeedbackContent(''); setFeedbackContact(''); setError(''); }}><span className="hs-nav-icon">💬</span>{t.feedback}</button>
           </nav>
         )}
         <div className="hs-sb-bot">
@@ -1039,6 +1070,40 @@ export default function Dashboard() {
               {!inviteLink
                 ? <div className="hs-modal-btns"><button className="hs-btn-save" onClick={generateInvite}>{t.generateInviteLink}</button><button className="hs-btn-cancel" onClick={()=>setShowInvite(false)}>{t.cancel}</button></div>
                 : <><div className="hs-invite-box">{inviteLink}</div><div className="hs-modal-btns"><button className="hs-btn-save" onClick={copyInviteLink}>{t.copyLink}</button><button className="hs-btn-cancel" onClick={()=>setShowInvite(false)}>{t.close}</button></div></>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FEEDBACK MODAL */}
+      {showFeedback && (
+        <div className="hs-overlay" onClick={()=>{ if(!feedbackSending) setShowFeedback(false); }}>
+          <div className="hs-modal" onClick={e=>e.stopPropagation()}>
+            <div className="hs-modal-hd"><div className="hs-modal-bar"/><h2 className="hs-modal-title">{t.feedbackTitle}</h2><p className="hs-modal-desc">{t.feedbackDesc}</p></div>
+            <div className="hs-modal-body">
+              {feedbackSent ? (
+                <p style={{fontSize:15,color:'var(--ink)',marginBottom:20}}>{t.feedbackSent}</p>
+              ) : (
+                <>
+                  {error&&<div className="hs-err">⚠ {error}</div>}
+                  <label className="hs-lbl">Type</label>
+                  <div style={{display:'flex',gap:8,marginBottom:16}}>
+                    {['bug','suggestion','other'].map(k=>(
+                      <button key={k} type="button" className={`hs-type-btn ${feedbackType===k?'sel':''}`} style={{flex:1}} onClick={()=>setFeedbackType(k)}>
+                        {k==='bug'?t.feedbackTypeBug:k==='suggestion'?t.feedbackTypeSuggestion:t.feedbackTypeOther}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="hs-lbl">Your feedback</label>
+                  <textarea className="hs-textarea" placeholder={t.feedbackPlaceholder} value={feedbackContent} onChange={e=>setFeedbackContent(e.target.value)} rows={4}/>
+                  <input className="hs-input" placeholder={t.feedbackContactPlaceholder} value={feedbackContact} onChange={e=>setFeedbackContact(e.target.value)} style={{marginTop:12}}/>
+                  <div className="hs-modal-btns">
+                    <button className="hs-btn-save" onClick={sendFeedback} disabled={feedbackSending||!feedbackContent.trim()}>{feedbackSending?t.saving:t.sendFeedback}</button>
+                    <button className="hs-btn-cancel" onClick={()=>setShowFeedback(false)} disabled={feedbackSending}>{t.cancel}</button>
+                  </div>
+                </>
+              )}
+              {feedbackSent&&<button className="btn-ghost" style={{width:'100%'}} onClick={()=>setShowFeedback(false)}>{t.close}</button>}
             </div>
           </div>
         </div>
