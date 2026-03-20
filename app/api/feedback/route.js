@@ -3,7 +3,7 @@ import { getDb } from '../../../lib/supabase-server';
 import { Resend } from 'resend';
 
 const ADMIN_EMAIL = process.env.FEEDBACK_ADMIN_EMAIL || 'admin@dancing-flamingo.org';
-const FROM_EMAIL = process.env.FEEDBACK_FROM_EMAIL || 'Hemsaga <onboarding@resend.dev>');
+const FROM_EMAIL = process.env.FEEDBACK_FROM_EMAIL || 'Hemsaga <onboarding@resend.dev>';
 
 export async function POST(request) {
   try {
