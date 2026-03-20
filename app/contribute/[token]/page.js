@@ -33,6 +33,14 @@ export default function ContributePage() {
     }
   }, [showAddMem, lang]);
 
+  useEffect(() => {
+    const modalOpen = showAddMem || showStory;
+    if (!modalOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [showAddMem, showStory]);
+
   const [memText,   setMemText]   = useState('');
   const [memDate,   setMemDate]   = useState('');
   const [memPhoto,  setMemPhoto]  = useState(null);
@@ -155,6 +163,18 @@ export default function ContributePage() {
         .c-stagger>*:nth-child(1){animation-delay:.05s}.c-stagger>*:nth-child(2){animation-delay:.12s}
         .c-stagger>*:nth-child(3){animation-delay:.19s}.c-stagger>*:nth-child(4){animation-delay:.26s}
         .c-stagger>*:nth-child(5){animation-delay:.33s}
+        /* FAB: mobile only; safe-area for notched devices */
+        .c-mob-fab{
+          display:none;align-items:center;justify-content:center;
+          position:fixed;z-index:200;width:56px;height:56px;border-radius:50%;
+          background:#2C1A0E;color:#fff;border:none;font-size:24px;cursor:pointer;
+          box-shadow:0 6px 24px rgba(44,26,14,.35);transition:all .2s;
+          bottom:max(24px,calc(12px + env(safe-area-inset-bottom)));
+          right:max(20px,env(safe-area-inset-right));
+        }
+        @media(max-width:768px){
+          .c-mob-fab{display:flex;}
+        }
       `}</style>
 
       {/* ── TOP BAR ── */}
@@ -332,15 +352,12 @@ export default function ContributePage() {
         />
       )}
 
-      {/* Floating add button (mobile) */}
-      <button onClick={()=>setShowAddMem(true)} style={{
-        position:'fixed', bottom:24, right:20, width:56, height:56,
-        borderRadius:'50%', background:'#2C1A0E', color:'white',
-        border:'none', fontSize:24, cursor:'pointer', zIndex:200,
-        boxShadow:'0 6px 24px rgba(44,26,14,.35)', display:'flex',
-        alignItems:'center', justifyContent:'center',
-        transition:'all .2s',
-      }}
+      {/* Floating add — mobile only (desktop uses inline CTA) */}
+      <button
+        type="button"
+        className="c-mob-fab"
+        aria-label={t.addMemory}
+        onClick={()=>setShowAddMem(true)}
         onMouseOver={e=>{e.currentTarget.style.background='#C4724A';e.currentTarget.style.transform='scale(1.08)';}}
         onMouseOut={e=>{e.currentTarget.style.background='#2C1A0E';e.currentTarget.style.transform='scale(1)';}}
       >

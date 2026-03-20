@@ -14,7 +14,8 @@ export default function StoryReader({ chapters = [], spaceName, spaceEmoji = 'ğŸ
   const [direction, setDir]     = useState(1);
   const [isMobile, setMobile]   = useState(false);
   const [showUI, setShowUI]     = useState(true);
-  const [touch, setTouch]       = useState(null);
+  /** Touch start X â€” ref avoids stale closure in onTouchEnd (React state would lag). */
+  const touchStartXRef = useRef(null);
   const hideRef = useRef(null);
   const total = chapters.length;
 
@@ -56,12 +57,13 @@ export default function StoryReader({ chapters = [], spaceName, spaceEmoji = 'ğŸ
     setTimeout(() => { setPage(i); setTurning(false); }, 300);
   };
 
-  const onTS = (e) => setTouch(e.touches[0].clientX);
+  const onTS = (e) => { touchStartXRef.current = e.touches[0].clientX; };
   const onTE = (e) => {
-    if (touch === null) return;
-    const dx = touch - e.changedTouches[0].clientX;
+    const x0 = touchStartXRef.current;
+    touchStartXRef.current = null;
+    if (x0 === null) return;
+    const dx = x0 - e.changedTouches[0].clientX;
     if (Math.abs(dx) > 44) turn(dx > 0 ? 1 : -1);
-    setTouch(null);
   };
 
   const ch = (page >= 0 && page < total) ? chapters[page] : null;
@@ -110,7 +112,7 @@ export default function StoryReader({ chapters = [], spaceName, spaceEmoji = 'ğŸ
         </button>
       </div>
       {total>1&&<div style={{position:'absolute',bottom:26,display:'flex',gap:6}}>
-        {chapters.map((_,i)=><div key={i} style={{width:6,height:6,borderRadius:'50%',background:`rgba(196,114,74,${i===0?.7:.2})`}}/>)}
+        {chapters.map((_,i)=><div key={i} style={{width:6,height:6,borderRadius:'50%',background:`rgba(196,114,74,${i === 0 ? 0.7 : 0.2})`}}/>)}
       </div>}
     </div>
   );

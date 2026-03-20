@@ -90,6 +90,15 @@ export default function Dashboard() {
     } else setRevealDateInput('');
   }, [activeSpace?.id, activeSpace?.reveal_at]);
 
+  // Lock body scroll when any overlay is open (fixes iOS background scroll)
+  useEffect(() => {
+    const modalOpen = showNewSpace || showAddMem || showInvite || showCartoon || showStory;
+    if (!modalOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [showNewSpace, showAddMem, showInvite, showCartoon, showStory]);
+
   const init = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -259,6 +268,33 @@ export default function Dashboard() {
     });
     const data = await res.json();
     if (data.token) setInviteLink(`https://hemsaga.com/join/${data.token}`);
+  };
+
+  /** Clipboard API + execCommand fallback for mobile / older browsers */
+  const copyInviteLink = async () => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(inviteLink);
+        alert(t.copied);
+        return;
+      }
+    } catch (_) { /* fall through */ }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = inviteLink;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, inviteLink.length);
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok) {
+        alert(t.copied);
+        return;
+      }
+    } catch (_) { /* fall through */ }
+    alert(t.copyFailed || 'Could not copy automatically. Long-press the link above to copy it.');
   };
 
   const getDays  = (dob) => dob ? Math.floor((new Date()-new Date(dob))/86400000).toLocaleString() : '—';
@@ -499,17 +535,6 @@ export default function Dashboard() {
         .hs-mob-nav-item.active{color:var(--terra);}
         .hs-mob-nav-item.active span:first-child{transform:scale(1.15);}
         .hs-mob-nav-item span:first-child{font-size:22px;transition:transform .2s;display:block;}
-        /* FAB — floating add button on mobile */
-        .hs-mob-fab{
-          display:none;position:fixed;bottom:max(80px,calc(70px + env(safe-area-inset-bottom)));
-          right:18px;width:52px;height:52px;border-radius:50%;
-          background:var(--espresso);color:white;border:none;
-          font-size:22px;cursor:pointer;z-index:301;
-          box-shadow:0 6px 20px rgba(44,26,14,.3);
-          display:none;align-items:center;justify-content:center;
-          transition:all .2s;
-        }
-        .hs-mob-fab:hover{background:var(--terra);transform:scale(1.08);}
 
         /* ── TABLET ── */
         @media(max-width:768px){
@@ -864,10 +889,10 @@ export default function Dashboard() {
                 ))}
               </div>
               <label className="hs-lbl">{t.spaceName}</label>
-              <input className="hs-input" placeholder={nsType==='child'?"e.g. Ivaan's Story":nsType==='couple'?"e.g. Me & Sara":"e.g. Our Story"} value={nsName} onChange={e=>setNsName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&createSpace()}/>
+              <input className="hs-input" placeholder={nsType==='child'?t.spaceNamePlaceholderChild:nsType==='couple'?t.spaceNamePlaceholderCouple:t.spaceNamePlaceholderDefault} value={nsName} onChange={e=>setNsName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&createSpace()}/>
               {(nsType==='child'||nsType==='self')&&<>
                 <label className="hs-lbl">{t.subjectName}</label>
-                <input className="hs-input" placeholder="e.g. Ivaan" value={nsSubject} onChange={e=>setNsSubject(e.target.value)}/>
+                <input className="hs-input" placeholder={t.subjectNamePlaceholder} value={nsSubject} onChange={e=>setNsSubject(e.target.value)}/>
                 <label className="hs-lbl">{t.dateOfBirth}</label>
                 <input className="hs-input" type="date" value={nsDob} onChange={e=>setNsDob(e.target.value)}/>
               </>}
@@ -940,7 +965,7 @@ export default function Dashboard() {
             <div className="hs-modal-body">
               {!inviteLink
                 ? <div className="hs-modal-btns"><button className="hs-btn-save" onClick={generateInvite}>{t.generateInviteLink}</button><button className="hs-btn-cancel" onClick={()=>setShowInvite(false)}>{t.cancel}</button></div>
-                : <><div className="hs-invite-box">{inviteLink}</div><div className="hs-modal-btns"><button className="hs-btn-save" onClick={()=>{navigator.clipboard.writeText(inviteLink);alert(t.copied);}}>{t.copyLink}</button><button className="hs-btn-cancel" onClick={()=>setShowInvite(false)}>{t.close}</button></div></>}
+                : <><div className="hs-invite-box">{inviteLink}</div><div className="hs-modal-btns"><button className="hs-btn-save" onClick={copyInviteLink}>{t.copyLink}</button><button className="hs-btn-cancel" onClick={()=>setShowInvite(false)}>{t.close}</button></div></>}
             </div>
           </div>
         </div>

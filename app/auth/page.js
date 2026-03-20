@@ -262,7 +262,7 @@ export default function AuthPage() {
           <div style={{marginTop: '60px'}}>
             <span className="memory-pill">📸 Papa logs a moment</span>
             <span className="memory-pill">✦ AI weaves the story</span>
-            <span className="memory-pill">📖 Ivaan reads it at 18</span>
+            <span className="memory-pill">📖 They read it when it matters</span>
           </div>
         </div>
 
