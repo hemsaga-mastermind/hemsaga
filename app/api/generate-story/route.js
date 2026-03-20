@@ -1,6 +1,7 @@
 // app/api/generate-story/route.js
 import { getDb } from '../../../lib/supabase-server';
 import { getWritingLanguage } from '../../../lib/langForAi.js';
+import { completeText } from '../../../lib/ai/complete';
 
 // Narrative voice adapted per space type
 const narrativePrompt = {
@@ -90,89 +91,73 @@ MEMORIES FROM THE FAMILY (all contributors, ordered by date):
 ${memoryLines}${priorContext}
 
 Write Chapter ${nextChapterNum} of this story in ${writingLang}.${isRegenerateLast ? '\n- You are REWRITING this chapter with the same memories; keep the same narrative role and tone but improve or refresh the prose.' : ''}
-- Weave memories from MULTIPLE contributors together naturally
-- Do not list memories mechanically — transform them into flowing prose
-- 3–5 rich paragraphs, literary quality, emotionally resonant
-- Continue naturally from previous chapters if any
+
+IMPORTANT:
+- Use the BEST material from these memories to create ONE cohesive chapter. You do not need to include every memory.
+- Select what fits a compelling narrative, theme, or time period. Quality and flow over quantity.
+- One memory alone does not make a chapter — weave multiple moments into something memorable and emotionally resonant.
+- Do not list memories mechanically — transform them into flowing prose. 3–5 rich paragraphs, literary quality.
+- Continue naturally from previous chapters if any.
 
 Respond ONLY with a valid JSON object, nothing else, no markdown:
-{"title": "A evocative chapter title", "content": "Full chapter prose here"}`;
+{"title": "An evocative chapter title", "content": "Full chapter prose here"}`;
 
-    // ── Call AI ──────────────────────────────────────────────
+    // ── Two-stage: Groq draft first, then Anthropic review for memorability (when both keys set) ──
+    const useTwoStage = process.env.GROQ_API_KEY && process.env.ANTHROPIC_API_KEY;
     let title, content;
-
-    if (process.env.ANTHROPIC_API_KEY) {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': process.env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 1400,
-          messages: [{ role: 'user', content: userPrompt }],
-        }),
-      });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        return Response.json({ error: `Anthropic API error ${res.status}: ${errText}` }, { status: 500 });
-      }
-
-      const data = await res.json();
-      const raw  = data.content?.[0]?.text || '';
-      if (!raw) return Response.json({ error: 'Empty response from Anthropic' }, { status: 500 });
-
-      try {
-        const parsed = safeParseJSON(raw);
-        title   = parsed.title;
-        content = parsed.content;
-      } catch (parseErr) {
-        console.error('Anthropic parse error, raw:', raw);
-        return Response.json({ error: `AI response could not be parsed: ${parseErr.message}` }, { status: 500 });
-      }
-
-    } else if (process.env.GROQ_API_KEY) {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          max_tokens: 1400,
+    try {
+      let raw;
+      if (useTwoStage) {
+        const draft = await completeText(userPrompt, {
+          feature: 'generate-story-draft',
+          maxTokens: 1400,
           temperature: 0.82,
-          messages: [
-            { role: 'system', content: 'You are a literary author. Always respond with only a valid JSON object, no markdown, no extra text.' },
-            { role: 'user', content: userPrompt },
-          ],
-        }),
-      });
+          provider: 'groq',
+        });
+        raw = draft.text;
+        if (!raw) throw new Error('Empty draft from Groq');
+        const draftParsed = safeParseJSON(raw);
+        const reviewPrompt = `You are an expert editor. Review this story chapter and improve it for flow, warmth, and memorability. Keep the same facts and structure. Do not add new events. Only refine the prose so it feels more vivid and memorable.
 
-      if (!res.ok) {
-        const errText = await res.text();
-        return Response.json({ error: `Groq API error ${res.status}: ${errText}` }, { status: 500 });
-      }
+CURRENT CHAPTER (JSON):
+${raw}
 
-      const data = await res.json();
-      const raw  = data.choices?.[0]?.message?.content || '';
-      if (!raw) return Response.json({ error: 'Empty response from Groq' }, { status: 500 });
-
-      try {
+Return the improved chapter as a valid JSON object with the same keys: {"title": "...", "content": "..."}. Same format, no markdown.`;
+        try {
+          const reviewed = await completeText(reviewPrompt, {
+            feature: 'generate-story-review',
+            maxTokens: 1600,
+            systemPrompt: 'You output only valid JSON. No commentary, no markdown fences.',
+            provider: 'anthropic',
+          });
+          if (reviewed.text) {
+            const reviewedParsed = safeParseJSON(reviewed.text);
+            if (reviewedParsed.title && reviewedParsed.content) {
+              title = reviewedParsed.title;
+              content = reviewedParsed.content;
+            }
+          }
+        } catch (_) { /* use draft if review fails */ }
+        if (!title || !content) {
+          title = draftParsed.title;
+          content = draftParsed.content;
+        }
+      } else {
+        const result = await completeText(userPrompt, {
+          feature: 'generate-story',
+          maxTokens: 1400,
+          temperature: 0.82,
+        });
+        raw = result.text;
+        if (!raw) return Response.json({ error: 'Empty response from AI' }, { status: 500 });
         const parsed = safeParseJSON(raw);
-        title   = parsed.title;
+        title = parsed.title;
         content = parsed.content;
-      } catch (parseErr) {
-        console.error('Groq parse error, raw:', raw);
-        return Response.json({ error: `AI response could not be parsed: ${parseErr.message}` }, { status: 500 });
       }
-
-    } else {
+    } catch (err) {
+      console.error('generate-story AI error:', err);
       return Response.json({
-        error: 'No AI API key configured. Add ANTHROPIC_API_KEY or GROQ_API_KEY to Vercel environment variables.'
+        error: err.message || 'AI request failed. Check ANTHROPIC_API_KEY or GROQ_API_KEY.'
       }, { status: 500 });
     }
 

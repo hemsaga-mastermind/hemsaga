@@ -2,6 +2,7 @@
 import { getDb } from '../../../../lib/supabase-server';
 import { getTargetChapterForMemory } from '../../../../lib/story/placement';
 import { getWritingLanguage } from '../../../../lib/langForAi.js';
+import { completeText } from '../../../../lib/ai/complete';
 
 function safeParseJSON(raw = '') {
   let cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -57,50 +58,20 @@ Respond ONLY with a valid JSON object:
 {"title": "Chapter title (unchanged or slightly adjusted)", "content": "Revised full chapter prose here"}`;
 
     let revisedTitle, revisedContent;
-    if (process.env.ANTHROPIC_API_KEY) {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1400, messages: [{ role: 'user', content: userPrompt }] }),
+    try {
+      const { text: raw } = await completeText(userPrompt, {
+        feature: 'story-tweak',
+        maxTokens: 1400,
+        systemPrompt: 'Respond with only a valid JSON object, no markdown.',
+        temperature: 0.7,
       });
-      if (!res.ok) return Response.json({ error: `Anthropic error: ${res.status}` }, { status: 500 });
-      const data = await res.json();
-      const raw = data.content?.[0]?.text || '';
       if (!raw) return Response.json({ error: 'Empty AI response' }, { status: 500 });
-      try {
-        const parsed = safeParseJSON(raw);
-        revisedTitle = parsed.title;
-        revisedContent = parsed.content;
-      } catch (e) {
-        return Response.json({ error: `Parse error: ${e.message}` }, { status: 500 });
-      }
-    } else if (process.env.GROQ_API_KEY) {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          max_tokens: 1400,
-          temperature: 0.7,
-          messages: [
-            { role: 'system', content: 'Respond with only a valid JSON object, no markdown.' },
-            { role: 'user', content: userPrompt },
-          ],
-        }),
-      });
-      if (!res.ok) return Response.json({ error: `Groq error: ${res.status}` }, { status: 500 });
-      const data = await res.json();
-      const raw = data.choices?.[0]?.message?.content || '';
-      if (!raw) return Response.json({ error: 'Empty AI response' }, { status: 500 });
-      try {
-        const parsed = safeParseJSON(raw);
-        revisedTitle = parsed.title;
-        revisedContent = parsed.content;
-      } catch (e) {
-        return Response.json({ error: `Parse error: ${e.message}` }, { status: 500 });
-      }
-    } else {
-      return Response.json({ error: 'No AI API key (ANTHROPIC_API_KEY or GROQ_API_KEY)' }, { status: 500 });
+      const parsed = safeParseJSON(raw);
+      revisedTitle = parsed.title;
+      revisedContent = parsed.content;
+    } catch (e) {
+      console.error('tweak AI error:', e);
+      return Response.json({ error: e.message || 'AI request failed.' }, { status: 500 });
     }
 
     const { data: updated, error: updateErr } = await db.from('stories')

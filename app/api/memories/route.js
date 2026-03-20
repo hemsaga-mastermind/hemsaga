@@ -109,3 +109,28 @@ export async function POST(request) {
     return Response.json({ error: err.message }, { status: 500 });
   }
 }
+
+// PATCH /api/memories — update memory (e.g. date only)
+export async function PATCH(request) {
+  try {
+    const db = getDb();
+    const body = await request.json();
+    const { memoryId, memory_date, content } = body;
+
+    if (!memoryId) return Response.json({ error: 'memoryId required' }, { status: 400 });
+
+    const updates = {};
+    if (memory_date !== undefined) updates.memory_date = memory_date;
+    if (content !== undefined) updates.content = String(content).trim();
+    if (Object.keys(updates).length === 0) return Response.json({ error: 'No fields to update (memory_date or content)' }, { status: 400 });
+
+    const { data, error } = await db.from('memories').update(updates).eq('id', memoryId).select().single();
+    if (error) return Response.json({ error: error.message }, { status: 500 });
+
+    const memory = { ...data, photo_url: await signPhotoUrl(data.photo_url) };
+    return Response.json({ memory });
+  } catch (err) {
+    console.error('memories PATCH error:', err);
+    return Response.json({ error: err.message }, { status: 500 });
+  }
+}

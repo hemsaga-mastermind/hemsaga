@@ -35,6 +35,10 @@ export default function Dashboard() {
   const [showInvite, setShowInvite] = useState(false);
   const [showCartoon, setShowCartoon] = useState(false);
   const [showMobileMenu, setMobileMenu] = useState(false);
+  const [showSpacePicker, setShowSpacePicker] = useState(false);
+  const [editMemId, setEditMemId] = useState(null);
+  const [editMemDate, setEditMemDate] = useState('');
+  const [savingDate, setSavingDate] = useState(false);
 
   const [nsType,    setNsType]    = useState('child');
   const [nsName,    setNsName]    = useState('');
@@ -48,6 +52,8 @@ export default function Dashboard() {
   const [memPreview,setMemPrev]   = useState(null);
   const [memoryPrompt, setMemoryPrompt] = useState('');
   const [memoryPromptId, setMemoryPromptId] = useState(null);
+  const [memExtra1, setMemExtra1] = useState('');
+  const [memExtra2, setMemExtra2] = useState('');
 
   const [cartoonPhoto, setCartoonPhoto]  = useState(null);
   const [cartoonPreview, setCartoonPrev] = useState(null);
@@ -92,12 +98,12 @@ export default function Dashboard() {
 
   // Lock body scroll when any overlay is open (fixes iOS background scroll)
   useEffect(() => {
-    const modalOpen = showNewSpace || showAddMem || showInvite || showCartoon || showStory;
+    const modalOpen = showNewSpace || showAddMem || showInvite || showCartoon || showStory || showSpacePicker || !!editMemId;
     if (!modalOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
-  }, [showNewSpace, showAddMem, showInvite, showCartoon, showStory]);
+  }, [showNewSpace, showAddMem, showInvite, showCartoon, showStory, showSpacePicker, editMemId]);
 
   const init = async () => {
     try {
@@ -135,7 +141,7 @@ export default function Dashboard() {
   };
 
   const switchSpace = async (s) => {
-    setActive(s); setView('home'); setMobileMenu(false);
+    setActive(s); setView('home'); setMobileMenu(false); setShowSpacePicker(false);
     await loadMemories(s.id, user?.id);
   };
 
@@ -169,6 +175,9 @@ export default function Dashboard() {
     if (!memText.trim() || !activeSpace || !user) return;
     setSaving(true); setError('');
     try {
+      let content = memText.trim();
+      if (memExtra1.trim()) content += '\n\n' + (t.memQuestion1 || 'What made that moment special?') + ' ' + memExtra1.trim();
+      if (memExtra2.trim()) content += '\n\n' + (t.memQuestion2 || 'Any detail that would make the story more vivid?') + ' ' + memExtra2.trim();
       // Upload photo server-side (private bucket, no public URL)
       let photoPath = null;
       if (memPhoto) {
@@ -190,7 +199,7 @@ export default function Dashboard() {
           userId: user.id,
           contributorId: user.id,
           author: memAuthor || 'Someone',
-          content: memText,
+          content,
           memory_date: memDate || new Date().toISOString().split('T')[0],
           photo_path: photoPath,
           ...(memoryPromptId != null && { prompt_id: memoryPromptId }),
@@ -201,6 +210,7 @@ export default function Dashboard() {
       setMemories(prev => [data.memory, ...prev]);
       setMemText(''); setMemAuthor('Papa'); setMemDate('');
       setMemPhoto(null); setMemPrev(null); setMemoryPromptId(null);
+      setMemExtra1(''); setMemExtra2('');
       setLastSavedMemoryId(data.memory.id);
     } catch (e) {
       setError(e.message || 'Could not save. Please try again.');
@@ -357,6 +367,21 @@ export default function Dashboard() {
     } catch (e) { setError(e.message); }
     setSavingReveal(false);
   };
+
+  const saveMemoryDate = async () => {
+    if (!editMemId || !editMemDate) return;
+    setSavingDate(true);
+    try {
+      const res = await fetch('/api/memories', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ memoryId: editMemId, memory_date: editMemDate }) });
+      const data = await res.json();
+      if (data.error) { setError(data.error); setSavingDate(false); return; }
+      const updated = data.memory;
+      setMemories(prev => prev.map(m => m.id === updated.id ? { ...m, memory_date: updated.memory_date, photo_url: updated.photo_url } : m));
+      setEditMemId(null); setEditMemDate('');
+    } catch (e) { setError(e.message); }
+    setSavingDate(false);
+  };
+
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'You';
   const theme    = TYPE_THEME[activeSpace?.space_type] || TYPE_THEME.custom;
 
@@ -642,12 +667,18 @@ export default function Dashboard() {
           <span className="hs-greeting" style={{display:'none'}} id="hs-desk-greet">
             {activeSpace ? <>{greeting()} — <em>{activeSpace.name}</em></> : <>Welcome to <em>Hemsaga</em></>}
           </span>
-          {/* Mobile: logo + space name */}
+          {/* Mobile: logo + space name (tappable to switch space) */}
           <div style={{display:'flex',alignItems:'center',gap:8}} id="hs-mob-greet">
             <div style={{width:26,height:26,background:'linear-gradient(135deg,#C4724A,#E8956A)',borderRadius:7,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,flexShrink:0}}>📖</div>
-            <span style={{fontFamily:'var(--serif)',fontSize:14,fontWeight:600,color:'var(--ink)',maxWidth:'45vw',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+            <button
+              type="button"
+              onClick={() => spaces.length > 1 && setShowSpacePicker(true)}
+              style={{fontFamily:'var(--serif)',fontSize:14,fontWeight:600,color:'var(--ink)',maxWidth:'45vw',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',background:'none',border:'none',padding:0,cursor: spaces.length > 1 ? 'pointer' : 'default',textAlign:'left'}}
+              aria-label={spaces.length > 1 ? t.switchSpace || 'Switch space' : undefined}
+            >
               {activeSpace ? activeSpace.name : 'Hemsaga'}
-            </span>
+              {spaces.length > 1 && <span style={{marginLeft:4,fontSize:10,opacity:0.7}}>▾</span>}
+            </button>
           </div>
           <style>{`@media(min-width:769px){#hs-desk-greet{display:flex!important;}#hs-mob-greet{display:none!important;}}`}</style>
           <div className="hs-topbar-right">
@@ -661,6 +692,41 @@ export default function Dashboard() {
             </>}
           </div>
         </header>
+
+        {/* Mobile: space switcher sheet (when multiple spaces) */}
+        {showSpacePicker && spaces.length > 1 && (
+          <div className="hs-overlay" style={{alignItems:'flex-end'}} onClick={()=>setShowSpacePicker(false)}>
+            <div className="hs-modal" style={{maxHeight:'60vh'}} onClick={e=>e.stopPropagation()}>
+              <div className="hs-modal-hd"><div className="hs-modal-bar"/><h2 className="hs-modal-title">{t.switchSpace || 'Switch space'}</h2><p className="hs-modal-desc">{t.switchSpaceDesc || 'Choose which story space to view.'}</p></div>
+              <div className="hs-modal-body" style={{paddingTop:0}}>
+                {spaces.map(s => (
+                  <button key={s.id} type="button" className={`hs-space-btn ${activeSpace?.id===s.id?'active':''}`} style={{marginBottom:6}} onClick={()=>switchSpace(s)}>
+                    <span className="hs-space-icon">{s.cover_emoji}</span>
+                    <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.name}</span>
+                  </button>
+                ))}
+                <button type="button" className="btn-ghost" style={{marginTop:8,width:'100%'}} onClick={()=>setShowSpacePicker(false)}>{t.cancel}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit memory date modal */}
+        {editMemId && (
+          <div className="hs-overlay" onClick={()=>{ if(!savingDate){ setEditMemId(null); setEditMemDate(''); }}}>
+            <div className="hs-modal" style={{maxWidth:320}} onClick={e=>e.stopPropagation()}>
+              <div className="hs-modal-hd"><div className="hs-modal-bar"/><h2 className="hs-modal-title">{t.editDate}</h2><p className="hs-modal-desc">{t.editDateDesc}</p></div>
+              <div className="hs-modal-body">
+                <label style={{display:'block',fontSize:12,fontWeight:600,color:'var(--ink3)',marginBottom:6}}>Date</label>
+                <input type="date" value={editMemDate} onChange={e=>setEditMemDate(e.target.value)} style={{width:'100%',padding:'10px 12px',borderRadius:8,border:'1px solid var(--ivory3)',fontSize:14,fontFamily:'var(--sans)',color:'var(--ink)',marginBottom:16}} />
+                <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+                  <button type="button" className="btn-ghost" onClick={()=>{ if(!savingDate){ setEditMemId(null); setEditMemDate(''); }}} disabled={savingDate}>{t.cancel}</button>
+                  <button type="button" className="btn-primary" onClick={saveMemoryDate} disabled={savingDate||!editMemDate}>{savingDate ? t.saving : t.saveDate}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* No spaces setup */}
         {spaces.length === 0 && (
@@ -792,7 +858,11 @@ export default function Dashboard() {
                   <div key={m.id} className="hs-mem-item">
                     <div className="hs-mem-stripe"/>
                     <div className="hs-mem-body">
-                      <div className="hs-mem-meta"><span className="hs-mem-author">{m.author}</span><span className="hs-mem-date">{fmtDate(m.memory_date)}</span></div>
+                      <div className="hs-mem-meta">
+                        <span className="hs-mem-author">{m.author}</span>
+                        <span className="hs-mem-date">{fmtDate(m.memory_date)}</span>
+                        <button type="button" className="btn-ghost" style={{marginLeft:8,padding:'2px 8px',fontSize:10,opacity:0.8}} onClick={()=>{ setEditMemId(m.id); setEditMemDate((m.memory_date||'').toString().slice(0,10)); }} aria-label={t.editDate}>{t.editDate}</button>
+                      </div>
                       <div className="hs-mem-text">{m.content}</div>
                       <button type="button" className="btn-ghost" style={{marginTop:10,padding:'6px 12px',fontSize:11}} onClick={()=>weaveMemoryIntoStory(m.id)} disabled={weavingMemoryId===m.id}>
                         {weavingMemoryId===m.id ? t.weavingIntoStory : t.weaveIntoStory}
@@ -928,13 +998,16 @@ export default function Dashboard() {
                   <input className="hs-input" type="date" value={memDate||new Date().toISOString().split('T')[0]} max={new Date().toISOString().split('T')[0]} onChange={e=>setMemDate(e.target.value)}/>
                   <label className="hs-lbl">{t.whatHappened}</label>
                   <textarea className="hs-textarea" placeholder={memoryPrompt || t.whatHappenedPlaceholder} value={memText} onChange={e=>setMemText(e.target.value)}/>
-                  <label className="hs-lbl">{t.photoOptional}</label>
+                  <div style={{marginTop:16,marginBottom:4}}><span className="hs-lbl" style={{fontSize:12,color:'var(--ink4)'}}>{t.addALittleMore}</span></div>
+                  <input className="hs-input" placeholder={t.memQuestion1} value={memExtra1} onChange={e=>setMemExtra1(e.target.value)} style={{marginBottom:8}}/>
+                  <input className="hs-input" placeholder={t.memQuestion2} value={memExtra2} onChange={e=>setMemExtra2(e.target.value)}/>
+                  <label className="hs-lbl" style={{marginTop:16}}>{t.photoOptional}</label>
                   {memPreview
                     ? <div style={{position:'relative',marginBottom:16}}><img src={memPreview} style={{width:'100%',maxHeight:190,objectFit:'cover',borderRadius:10}} alt=""/><button onClick={()=>{setMemPhoto(null);setMemPrev(null);}} style={{position:'absolute',top:8,right:8,background:'rgba(44,26,14,.65)',color:'white',border:'none',borderRadius:'50%',width:26,height:26,cursor:'pointer',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center'}}>×</button></div>
                     : <label className="hs-upload"><span style={{fontSize:26}}>📷</span><span style={{fontSize:13,color:'var(--ink3)',fontWeight:500}}>{t.tapToAddPhoto}</span><input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(f){setMemPhoto(f);setMemPrev(URL.createObjectURL(f));}}}/></label>}
                   <div className="hs-modal-btns">
                     <button className="hs-btn-save" onClick={saveMemory} disabled={saving||!memText.trim()}>{saving?t.saving:t.saveMemory}</button>
-                    <button className="hs-btn-cancel" onClick={()=>{setShowAddMem(false);setError('');setMemPhoto(null);setMemPrev(null);}}>{t.cancel}</button>
+                    <button className="hs-btn-cancel" onClick={()=>{setShowAddMem(false);setError('');setMemPhoto(null);setMemPrev(null);setMemExtra1('');setMemExtra2('');}}>{t.cancel}</button>
                   </div>
                 </>
               )}
