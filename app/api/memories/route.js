@@ -2,18 +2,20 @@
 // Private photos: generates signed URLs on every read (1hr expiry)
 // Logs every access for audit trail
 import { getDb } from '../../../lib/supabase-server';
+import { getSessionUser } from '../../../lib/supabase-auth';
+import { canAccessSpace, isSpaceOwner, authJson } from '../../../lib/space-access';
 
 const SIGNED_URL_EXPIRY = 3600; // 1 hour in seconds
 
 async function signPhotoUrl(path) {
   if (!path) return null;
-  // Already a full URL (legacy) — return as-is for backwards compat
   if (path.startsWith('http')) return path;
   const db = getDb();
-  const { data, error } = await db.storage
-    .from('memories')
-    .createSignedUrl(path, SIGNED_URL_EXPIRY);
-  if (error) { console.warn('sign URL error:', error.message); return null; }
+  const { data, error } = await db.storage.from('memories').createSignedUrl(path, SIGNED_URL_EXPIRY);
+  if (error) {
+    console.warn('sign URL error:', error.message);
+    return null;
+  }
   return data.signedUrl;
 }
 
@@ -21,16 +23,18 @@ async function signPhotoUrl(path) {
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const spaceId       = searchParams.get('spaceId');
-    const contributorId = searchParams.get('contributorId'); // filter to one person
-    const accessor      = searchParams.get('accessor') || 'unknown'; // for audit log
+    const spaceId = searchParams.get('spaceId');
+    const contributorId = searchParams.get('contributorId');
+    const accessor = searchParams.get('accessor') || 'unknown';
 
     if (!spaceId) return Response.json({ error: 'spaceId required' }, { status: 400 });
 
+    const user = await getSessionUser();
     const db = getDb();
-    let query = db.from('memories').select('*')
-      .eq('space_id', spaceId)
-      .order('memory_date', { ascending: false });
+    const allowed = await canAccessSpace(db, spaceId, { userId: user?.id, contributorId });
+    if (!allowed) return authJson('Not authorized', 403);
+
+    let query = db.from('memories').select('*').eq('space_id', spaceId).order('memory_date', { ascending: false });
 
     if (contributorId) {
       query = query.eq('contributor_id', contributorId);
@@ -39,28 +43,27 @@ export async function GET(request) {
     const { data, error } = await query;
     if (error) return Response.json({ error: error.message }, { status: 500 });
 
-    // Generate signed URLs for all photos in parallel
     const memories = await Promise.all(
       (data || []).map(async (m) => ({
         ...m,
         photo_url: await signPhotoUrl(m.photo_url),
-      }))
+      })),
     );
 
-    // Total count across all contributors (for curiosity tease)
-    const { count } = await db.from('memories')
+    const { count } = await db
+      .from('memories')
       .select('*', { count: 'exact', head: true })
       .eq('space_id', spaceId);
 
-    // Log this read access
-    await db.from('access_log').insert([{
-      space_id: spaceId,
-      accessor,
-      action: 'read_memories',
-    }]);
+    await db.from('access_log').insert([
+      {
+        space_id: spaceId,
+        accessor,
+        action: 'read_memories',
+      },
+    ]);
 
     return Response.json({ memories, totalCount: count || 0 });
-
   } catch (err) {
     console.error('memories GET error:', err);
     return Response.json({ error: err.message }, { status: 500 });
@@ -68,10 +71,9 @@ export async function GET(request) {
 }
 
 // POST /api/memories — save a new memory
-// photo_url now stores the storage PATH, not a public URL
 export async function POST(request) {
   try {
-    const db = getDb();
+    const user = await getSessionUser();
     const body = await request.json();
     const { spaceId, contributorId, author, content, memory_date, photo_path, prompt_id } = body;
 
@@ -79,14 +81,18 @@ export async function POST(request) {
       return Response.json({ error: 'spaceId and content required' }, { status: 400 });
     }
 
+    const db = getDb();
+    const allowed = await canAccessSpace(db, spaceId, { userId: user?.id, contributorId });
+    if (!allowed) return authJson('Not authorized', 403);
+
     const row = {
-      space_id:       spaceId,
+      space_id: spaceId,
       contributor_id: contributorId || null,
-      user_id:        contributorId || 'anonymous',
-      author:         author || 'Someone',
-      content:        content.trim(),
-      memory_date:    memory_date || new Date().toISOString().split('T')[0],
-      photo_url:      photo_path || null, // stores path, signed on read
+      user_id: contributorId || 'anonymous',
+      author: author || 'Someone',
+      content: content.trim(),
+      memory_date: memory_date || new Date().toISOString().split('T')[0],
+      photo_url: photo_path || null,
     };
     if (prompt_id !== undefined && prompt_id !== null) {
       row.prompt_id = String(prompt_id);
@@ -96,33 +102,52 @@ export async function POST(request) {
 
     if (error) return Response.json({ error: error.message }, { status: 500 });
 
-    // Sign the photo URL for the immediate response
     const memory = {
       ...data,
       photo_url: await signPhotoUrl(data.photo_url),
     };
 
     return Response.json({ memory });
-
   } catch (err) {
     console.error('memories POST error:', err);
     return Response.json({ error: err.message }, { status: 500 });
   }
 }
 
-// PATCH /api/memories — update memory (e.g. date only)
+// PATCH /api/memories — update memory (owner of space, or contributor editing own row)
 export async function PATCH(request) {
   try {
-    const db = getDb();
+    const user = await getSessionUser();
     const body = await request.json();
-    const { memoryId, memory_date, content } = body;
+    const { memoryId, memory_date, content, contributorId } = body;
 
     if (!memoryId) return Response.json({ error: 'memoryId required' }, { status: 400 });
+
+    const db = getDb();
+    const { data: existing, error: fetchErr } = await db
+      .from('memories')
+      .select('id, space_id, contributor_id')
+      .eq('id', memoryId)
+      .single();
+    if (fetchErr || !existing) return Response.json({ error: 'Memory not found' }, { status: 404 });
+
+    const ownerOk = user && (await isSpaceOwner(db, existing.space_id, user.id));
+    const contribOk =
+      contributorId &&
+      existing.contributor_id &&
+      contributorId === existing.contributor_id &&
+      (await canAccessSpace(db, existing.space_id, { userId: null, contributorId }));
+
+    if (!ownerOk && !contribOk) {
+      return authJson('Not authorized', 403);
+    }
 
     const updates = {};
     if (memory_date !== undefined) updates.memory_date = memory_date;
     if (content !== undefined) updates.content = String(content).trim();
-    if (Object.keys(updates).length === 0) return Response.json({ error: 'No fields to update (memory_date or content)' }, { status: 400 });
+    if (Object.keys(updates).length === 0) {
+      return Response.json({ error: 'No fields to update (memory_date or content)' }, { status: 400 });
+    }
 
     const { data, error } = await db.from('memories').update(updates).eq('id', memoryId).select().single();
     if (error) return Response.json({ error: error.message }, { status: 500 });

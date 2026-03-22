@@ -1,5 +1,7 @@
 // app/api/generate-story/route.js
 import { getDb } from '../../../lib/supabase-server';
+import { getSessionUser } from '../../../lib/supabase-auth';
+import { canAccessSpace, authJson } from '../../../lib/space-access';
 import { getWritingLanguage } from '../../../lib/langForAi.js';
 import { completeText } from '../../../lib/ai/complete';
 import { parseAiJsonObject } from '../../../lib/safeParseAiJson.js';
@@ -24,9 +26,14 @@ function getAge(dob) {
 export async function POST(request) {
   try {
     const db = getDb();
-    const { spaceId, regenerate, lang } = await request.json();
+    const body = await request.json();
+    const { spaceId, regenerate, lang, contributorId } = body;
     const writingLang = getWritingLanguage(lang);
     if (!spaceId) return Response.json({ error: 'spaceId required' }, { status: 400 });
+
+    const user = await getSessionUser();
+    const allowed = await canAccessSpace(db, spaceId, { userId: user?.id, contributorId });
+    if (!allowed) return authJson('Not authorized', 403);
 
     // ── Load space ──────────────────────────────────────────
     const { data: space, error: spaceErr } = await db

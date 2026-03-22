@@ -1,5 +1,7 @@
 // POST /api/feedback — store feedback/suggestions/bugs and email admin
 import { getDb } from '../../../lib/supabase-server';
+import { getSessionUser } from '../../../lib/supabase-auth';
+import { isSpaceOwner } from '../../../lib/space-access';
 import { Resend } from 'resend';
 
 const ADMIN_EMAIL = process.env.FEEDBACK_ADMIN_EMAIL || 'admin@dancing-flamingo.org';
@@ -17,6 +19,15 @@ export async function POST(request) {
     const feedbackType = allowedTypes.includes(type) ? type : 'other';
 
     const db = getDb();
+    const sessionUser = await getSessionUser();
+    const trustedUserId = sessionUser?.id || null;
+    let feedbackSpaceId = body.space_id || null;
+    if (feedbackSpaceId && trustedUserId) {
+      const owns = await isSpaceOwner(db, feedbackSpaceId, trustedUserId);
+      if (!owns) feedbackSpaceId = null;
+    } else if (feedbackSpaceId && !trustedUserId) {
+      feedbackSpaceId = null;
+    }
     const priority = feedbackType === 'bug' ? 10 : 0;
     const { data: row, error } = await db
       .from('feedback')
@@ -24,8 +35,8 @@ export async function POST(request) {
         type: feedbackType,
         content: content.trim().slice(0, 10000),
         contact_email: contact_email && String(contact_email).trim().slice(0, 255) || null,
-        user_id: body.user_id || null,
-        space_id: body.space_id || null,
+        user_id: trustedUserId,
+        space_id: feedbackSpaceId,
         status: 'new',
         priority,
       }])

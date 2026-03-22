@@ -126,7 +126,7 @@ export default function Dashboard() {
 
   const loadSpaces = async (uid) => {
     try {
-      const res = await fetch(`/api/spaces?userId=${uid}`);
+      const res = await fetch('/api/spaces');
       const data = await fetchJson(res);
       if (data.error) { console.error('loadSpaces:', data.error); return; }
       setSpaces(data.spaces || []);
@@ -161,7 +161,6 @@ export default function Dashboard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.id,
           name: nsName.trim(),
           space_type: nsType,
           cover_emoji: type.emoji,

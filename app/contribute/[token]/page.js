@@ -109,7 +109,12 @@ export default function ContributePage() {
       const res = await fetch('/api/generate-story', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ spaceId: contributor.spaceId, regenerate: false }),
+        body: JSON.stringify({
+          spaceId: contributor.spaceId,
+          regenerate: false,
+          contributorId: contributor.contributorId,
+          lang,
+        }),
       });
       const data = await fetchJson(res);
       if (data.error) {

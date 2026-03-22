@@ -1,5 +1,7 @@
 // POST /api/story/tweak — weave a memory into an existing chapter and update it
 import { getDb } from '../../../../lib/supabase-server';
+import { getSessionUser } from '../../../../lib/supabase-auth';
+import { isSpaceOwner, authJson } from '../../../../lib/space-access';
 import { getTargetChapterForMemory } from '../../../../lib/story/placement';
 import { getWritingLanguage } from '../../../../lib/langForAi.js';
 import { completeText } from '../../../../lib/ai/complete';
@@ -7,10 +9,16 @@ import { parseAiJsonObject } from '../../../../lib/safeParseAiJson.js';
 
 export async function POST(request) {
   try {
+    const user = await getSessionUser();
+    if (!user) return authJson('Sign in required', 401);
+
     const db = getDb();
     const body = await request.json();
     const { spaceId, memoryId, targetChapter: targetChapterParam, content, author, memory_date, lang } = body;
     if (!spaceId) return Response.json({ error: 'spaceId required' }, { status: 400 });
+
+    const owner = await isSpaceOwner(db, spaceId, user.id);
+    if (!owner) return authJson('Not authorized', 403);
 
     let memory;
     if (memoryId) {

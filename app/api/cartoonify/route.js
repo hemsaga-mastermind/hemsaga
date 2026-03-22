@@ -1,6 +1,12 @@
+import { getSessionUser } from '../../../lib/supabase-auth';
+import { authJson } from '../../../lib/space-access';
+
 export async function POST(request) {
   try {
-    const { imageUrl, childName } = await request.json();
+    const user = await getSessionUser();
+    if (!user) return authJson('Sign in required', 401);
+
+    const { imageUrl } = await request.json();
 
     // Use the newer deployment-based API format
     const response = await fetch(

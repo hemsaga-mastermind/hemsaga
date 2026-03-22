@@ -2,6 +2,8 @@
 // POST — generate or fetch invite token for a space
 // GET  — resolve token → return space info (for join page)
 import { getDb } from '../../../../lib/supabase-server';
+import { getSessionUser } from '../../../../lib/supabase-auth';
+import { isSpaceOwner, authJson } from '../../../../lib/space-access';
 
 // GET /api/spaces/invite?token=xxx  → returns space info
 export async function GET(request) {
@@ -28,9 +30,15 @@ export async function GET(request) {
 // POST /api/spaces/invite  — create a fresh invite link for a space
 export async function POST(request) {
   try {
+    const user = await getSessionUser();
+    if (!user) return authJson('Sign in required', 401);
+
     const db = getDb();
     const { spaceId } = await request.json();
     if (!spaceId) return Response.json({ error: 'spaceId required' }, { status: 400 });
+
+    const owner = await isSpaceOwner(db, spaceId, user.id);
+    if (!owner) return authJson('Not authorized', 403);
 
     // Each invite is a new row — one link per person
     const { data, error } = await db.from('space_members').insert([{
