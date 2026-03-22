@@ -3,14 +3,7 @@ import { getDb } from '../../../../lib/supabase-server';
 import { getTargetChapterForMemory } from '../../../../lib/story/placement';
 import { getWritingLanguage } from '../../../../lib/langForAi.js';
 import { completeText } from '../../../../lib/ai/complete';
-
-function safeParseJSON(raw = '') {
-  let cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-  const start = cleaned.indexOf('{');
-  const end   = cleaned.lastIndexOf('}');
-  if (start === -1 || end === -1) throw new Error(`No JSON in response: ${cleaned.slice(0, 200)}`);
-  return JSON.parse(cleaned.slice(start, end + 1));
-}
+import { parseAiJsonObject } from '../../../../lib/safeParseAiJson.js';
 
 export async function POST(request) {
   try {
@@ -66,7 +59,7 @@ Respond ONLY with a valid JSON object:
         temperature: 0.7,
       });
       if (!raw) return Response.json({ error: 'Empty AI response' }, { status: 500 });
-      const parsed = safeParseJSON(raw);
+      const parsed = parseAiJsonObject(raw);
       revisedTitle = parsed.title;
       revisedContent = parsed.content;
     } catch (e) {

@@ -2,6 +2,7 @@
 import { getDb } from '../../../lib/supabase-server';
 import { getWritingLanguage } from '../../../lib/langForAi.js';
 import { completeText } from '../../../lib/ai/complete';
+import { parseAiJsonObject } from '../../../lib/safeParseAiJson.js';
 
 // Narrative voice adapted per space type
 const narrativePrompt = {
@@ -18,17 +19,6 @@ function getAge(dob) {
   const m = (n.getFullYear() - b.getFullYear()) * 12 + (n.getMonth() - b.getMonth());
   if (m < 24) return `${m} months old`;
   return `${Math.floor(m / 12)} years old`;
-}
-
-// Safely parse JSON from AI — handles markdown fences and trailing text
-function safeParseJSON(raw = '') {
-  // Strip markdown fences
-  let cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-  // Find first { and last } in case there's leading/trailing text
-  const start = cleaned.indexOf('{');
-  const end   = cleaned.lastIndexOf('}');
-  if (start === -1 || end === -1) throw new Error(`No JSON object found in response: ${cleaned.slice(0,200)}`);
-  return JSON.parse(cleaned.slice(start, end + 1));
 }
 
 export async function POST(request) {
@@ -116,7 +106,7 @@ Respond ONLY with a valid JSON object, nothing else, no markdown:
         });
         raw = draft.text;
         if (!raw) throw new Error('Empty draft from Groq');
-        const draftParsed = safeParseJSON(raw);
+        const draftParsed = parseAiJsonObject(raw);
         const reviewPrompt = `You are an expert editor. Review this story chapter and improve it for flow, warmth, and memorability. Keep the same facts and structure. Do not add new events. Only refine the prose so it feels more vivid and memorable.
 
 CURRENT CHAPTER (JSON):
@@ -131,7 +121,7 @@ Return the improved chapter as a valid JSON object with the same keys: {"title":
             provider: 'anthropic',
           });
           if (reviewed.text) {
-            const reviewedParsed = safeParseJSON(reviewed.text);
+            const reviewedParsed = parseAiJsonObject(reviewed.text);
             if (reviewedParsed.title && reviewedParsed.content) {
               title = reviewedParsed.title;
               content = reviewedParsed.content;
@@ -150,7 +140,7 @@ Return the improved chapter as a valid JSON object with the same keys: {"title":
         });
         raw = result.text;
         if (!raw) return Response.json({ error: 'Empty response from AI' }, { status: 500 });
-        const parsed = safeParseJSON(raw);
+        const parsed = parseAiJsonObject(raw);
         title = parsed.title;
         content = parsed.content;
       }
