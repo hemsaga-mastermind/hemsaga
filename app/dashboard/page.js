@@ -253,15 +253,24 @@ export default function Dashboard() {
   };
 
   const generateCartoon = async () => {
-    if (!cartoonPhoto || !activeSpace) return;
+    if (!cartoonPhoto || !activeSpace || !user) return;
     setCartoonizing(true);
     try {
-      const fn = `${user.id}/avatar-${Date.now()}-${cartoonPhoto.name.replace(/\s/g,'_')}`;
-      await supabase.storage.from('memories').upload(fn, cartoonPhoto);
-      const { data: u } = supabase.storage.from('memories').getPublicUrl(fn);
+      const fd = new FormData();
+      fd.append('file', cartoonPhoto);
+      fd.append('spaceId', activeSpace.id);
+      fd.append('contributorId', user.id);
+      fd.append('type', 'avatar');
+      const upRes = await fetch('/api/upload', { method: 'POST', body: fd });
+      const upData = await fetchJson(upRes).catch(() => ({}));
+      if (!upData.path) {
+        alert(upData.error || 'Photo upload failed.');
+        setCartoonizing(false);
+        return;
+      }
       const res = await fetch('/api/cartoonify', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl: u.publicUrl }),
+        body: JSON.stringify({ storagePath: upData.path, spaceId: activeSpace.id }),
       });
       const data = await res.json();
       if (data.cartoonUrl) {

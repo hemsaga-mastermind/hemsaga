@@ -4,7 +4,14 @@ import { getSessionUser } from '../../../lib/supabase-auth';
 import { canAccessSpace, authJson } from '../../../lib/space-access';
 import { getWritingLanguage } from '../../../lib/langForAi.js';
 import { completeText } from '../../../lib/ai/complete';
-import { parseAiJsonObject } from '../../../lib/safeParseAiJson.js';
+import { parseAndValidateChapter } from '../../../lib/ai/storyChapterJson.js';
+import { takeToken, rateLimitGenerateStory, clientKeyFromRequest } from '../../../lib/rate-limit';
+import {
+  getChapterIllustrationCount,
+  generateChapterIllustrationPaths,
+  withSignedIllustrations,
+  withSignedIllustrationsMany,
+} from '../../../lib/story/chapterIllustrations.js';
 
 // Narrative voice adapted per space type
 const narrativePrompt = {
@@ -34,6 +41,16 @@ export async function POST(request) {
     const user = await getSessionUser();
     const allowed = await canAccessSpace(db, spaceId, { userId: user?.id, contributorId });
     if (!allowed) return authJson('Not authorized', 403);
+
+    const rlCfg = rateLimitGenerateStory();
+    const rlKey = clientKeyFromRequest(request, { userId: user?.id, contributorId });
+    const rl = takeToken(rlKey, rlCfg);
+    if (!rl.ok) {
+      return Response.json(
+        { error: 'Too many story generations. Try again later.', retryAfter: rl.retryAfterSec },
+        { status: 429 },
+      );
+    }
 
     // ── Load space ──────────────────────────────────────────
     const { data: space, error: spaceErr } = await db
@@ -101,7 +118,8 @@ Respond ONLY with a valid JSON object, nothing else, no markdown:
 
     // ── Two-stage: Groq draft first, then Anthropic review for memorability (when both keys set) ──
     const useTwoStage = process.env.GROQ_API_KEY && process.env.ANTHROPIC_API_KEY;
-    let title, content;
+    let title;
+    let content;
     try {
       let raw;
       if (useTwoStage) {
@@ -113,11 +131,14 @@ Respond ONLY with a valid JSON object, nothing else, no markdown:
         });
         raw = draft.text;
         if (!raw) throw new Error('Empty draft from Groq');
-        const draftParsed = parseAiJsonObject(raw);
+        const draftData = await parseAndValidateChapter(raw, { feature: 'generate-story-draft' });
+        title = draftData.title;
+        content = draftData.content;
+
         const reviewPrompt = `You are an expert editor. Review this story chapter and improve it for flow, warmth, and memorability. Keep the same facts and structure. Do not add new events. Only refine the prose so it feels more vivid and memorable.
 
 CURRENT CHAPTER (JSON):
-${raw}
+${JSON.stringify({ title, content })}
 
 Return the improved chapter as a valid JSON object with the same keys: {"title": "...", "content": "..."}. Same format, no markdown.`;
         try {
@@ -128,16 +149,18 @@ Return the improved chapter as a valid JSON object with the same keys: {"title":
             provider: 'anthropic',
           });
           if (reviewed.text) {
-            const reviewedParsed = parseAiJsonObject(reviewed.text);
-            if (reviewedParsed.title && reviewedParsed.content) {
-              title = reviewedParsed.title;
-              content = reviewedParsed.content;
+            try {
+              const reviewedData = await parseAndValidateChapter(reviewed.text, {
+                feature: 'generate-story-review',
+              });
+              title = reviewedData.title;
+              content = reviewedData.content;
+            } catch {
+              /* keep validated draft */
             }
           }
-        } catch { /* use draft if review fails */ }
-        if (!title || !content) {
-          title = draftParsed.title;
-          content = draftParsed.content;
+        } catch {
+          /* keep draft */
         }
       } else {
         const result = await completeText(userPrompt, {
@@ -147,20 +170,15 @@ Return the improved chapter as a valid JSON object with the same keys: {"title":
         });
         raw = result.text;
         if (!raw) return Response.json({ error: 'Empty response from AI' }, { status: 500 });
-        const parsed = parseAiJsonObject(raw);
-        title = parsed.title;
-        content = parsed.content;
+        const single = await parseAndValidateChapter(raw, { feature: 'generate-story' });
+        title = single.title;
+        content = single.content;
       }
     } catch (err) {
       console.error('generate-story AI error:', err);
       return Response.json({
-        error: err.message || 'AI request failed. Check ANTHROPIC_API_KEY or GROQ_API_KEY.'
+        error: err.message || 'AI request failed. Check ANTHROPIC_API_KEY or GROQ_API_KEY.',
       }, { status: 500 });
-    }
-
-    // Validate we got actual content
-    if (!title || !content) {
-      return Response.json({ error: 'AI returned empty title or content' }, { status: 500 });
     }
 
     // ── Save chapter (insert new or update last when regenerating) ────────
@@ -190,13 +208,38 @@ Return the improved chapter as a valid JSON object with the same keys: {"title":
       saved = inserted;
     }
 
+    const illCount = getChapterIllustrationCount();
+    if (illCount > 0 && process.env.REPLICATE_API_TOKEN) {
+      try {
+        const paths = await generateChapterIllustrationPaths({
+          db,
+          spaceId,
+          storyId: saved.id,
+          title: title.trim(),
+          content: content.trim(),
+          count: illCount,
+        });
+        await db.from('stories').update({ illustration_paths: paths }).eq('id', saved.id);
+        saved = { ...saved, illustration_paths: paths };
+      } catch (illErr) {
+        console.warn('generate-story illustrations:', illErr?.message || illErr);
+        saved = { ...saved, illustration_paths: saved.illustration_paths ?? [] };
+      }
+    } else {
+      saved = { ...saved, illustration_paths: saved.illustration_paths ?? [] };
+    }
+
     const allChapters = isRegenerateLast
       ? existingChapters.slice(0, -1).concat(saved)
       : [...existingChapters, saved];
 
+    const chaptersOut = await withSignedIllustrationsMany(db, allChapters);
+    const newChapterOut =
+      chaptersOut.find((c) => c.id === saved.id) || (await withSignedIllustrations(db, saved));
+
     return Response.json({
-      chapters: allChapters,
-      newChapter: saved,
+      chapters: chaptersOut,
+      newChapter: newChapterOut,
       memoriesUsed: memories.length,
     });
 

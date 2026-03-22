@@ -84,6 +84,41 @@ export default function StoryReader({ chapters = [], spaceName, spaceEmoji = 'ðŸ
   const ch = (page >= 0 && page < total) ? chapters[page] : null;
   const progress = ((page + 1) / total) * 100;
 
+  /** Signed illustration URLs from API (`illustrations`); optional beta feature */
+  const chapterIllustrations = (urls, mobile) => {
+    if (!urls?.length) return null;
+    return (
+      <div style={{
+        marginBottom: mobile ? 18 : 22,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        alignItems: 'center',
+        width: '100%',
+      }}>
+        {urls.map((src, i) => (
+          <div
+            key={i}
+            style={{
+              borderRadius: 12,
+              overflow: 'hidden',
+              boxShadow: '0 8px 28px rgba(44,26,14,.12)',
+              border: '1px solid rgba(196,114,74,.22)',
+              width: '100%',
+              maxWidth: mobile ? 'min(100%, 520px)' : '100%',
+            }}
+          >
+            <img
+              src={src}
+              alt=""
+              style={{ width: '100%', height: 'auto', display: 'block', verticalAlign: 'middle' }}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const paras = (text = '', mobile = false) =>
     text.split(/\n+/).filter(p => p.trim()).map((p, i) => (
       <p key={i} style={{
@@ -192,6 +227,7 @@ export default function StoryReader({ chapters = [], spaceName, spaceEmoji = 'ðŸ
           <h2 style={{fontSize:'clamp(20px, 5.2vw, 24px)',fontWeight:600,color:'#1a1008',margin:0,lineHeight:1.25}}>{ch.title}</h2>
           <div style={{width:36,height:2,background:'rgba(196,114,74,.55)',margin:'12px auto 0',borderRadius:2}}/>
         </div>
+        {chapterIllustrations(ch.illustrations, true)}
         <div style={{textAlign:'left',maxWidth:'42rem',margin:'0 auto'}}>{paras(typeof ch.content === 'string' ? ch.content : String(ch.content || ''), true)}</div>
       </div>
       {/* Bottom nav â€” always tappable; safe area for home indicator */}
@@ -267,6 +303,7 @@ export default function StoryReader({ chapters = [], spaceName, spaceEmoji = 'ðŸ
             <h2 style={{fontSize:21,fontWeight:600,color:'#2C1A0E',margin:0,lineHeight:1.3}}>{ch.title}</h2>
             <div style={{width:36,height:1.5,background:'rgba(196,114,74,.45)',margin:'13px auto 0',borderRadius:2}}/>
           </div>
+          {chapterIllustrations(ch.illustrations, false)}
           <div style={{flex:1,overflowY:'auto',textAlign:'justify',fontSize:15}}>{paras(ch.content)}</div>
           <div style={{marginTop:20,fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:11,color:'rgba(196,114,74,.35)',letterSpacing:1,textAlign:'right',flexShrink:0}}>{(page+1)*2}</div>
         </div>

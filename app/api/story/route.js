@@ -2,6 +2,7 @@
 import { getDb } from '../../../lib/supabase-server';
 import { getSessionUser } from '../../../lib/supabase-auth';
 import { canAccessSpace, authJson } from '../../../lib/space-access';
+import { withSignedIllustrationsMany } from '../../../lib/story/chapterIllustrations.js';
 
 export async function GET(request) {
   try {
@@ -21,7 +22,8 @@ export async function GET(request) {
       .eq('space_id', spaceId)
       .order('chapter_number', { ascending: true });
     if (error) return Response.json({ error: error.message }, { status: 500 });
-    return Response.json({ chapters: data || [] });
+    const chapters = await withSignedIllustrationsMany(db, data || []);
+    return Response.json({ chapters });
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 });
   }

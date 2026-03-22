@@ -5,7 +5,8 @@ import { isSpaceOwner, authJson } from '../../../../lib/space-access';
 import { getTargetChapterForMemory } from '../../../../lib/story/placement';
 import { getWritingLanguage } from '../../../../lib/langForAi.js';
 import { completeText } from '../../../../lib/ai/complete';
-import { parseAiJsonObject } from '../../../../lib/safeParseAiJson.js';
+import { parseAndValidateChapter } from '../../../../lib/ai/storyChapterJson.js';
+import { takeToken, rateLimitStoryTweak, tweakKeyFromUser } from '../../../../lib/rate-limit';
 
 export async function POST(request) {
   try {
@@ -19,6 +20,15 @@ export async function POST(request) {
 
     const owner = await isSpaceOwner(db, spaceId, user.id);
     if (!owner) return authJson('Not authorized', 403);
+
+    const rlCfg = rateLimitStoryTweak();
+    const rl = takeToken(tweakKeyFromUser(user.id), rlCfg);
+    if (!rl.ok) {
+      return Response.json(
+        { error: 'Too many story edits. Try again later.', retryAfter: rl.retryAfterSec },
+        { status: 429 },
+      );
+    }
 
     let memory;
     if (memoryId) {
@@ -58,7 +68,8 @@ Return a revised version of the chapter that includes this memory. Same length a
 Respond ONLY with a valid JSON object:
 {"title": "Chapter title (unchanged or slightly adjusted)", "content": "Revised full chapter prose here"}`;
 
-    let revisedTitle, revisedContent;
+    let revisedTitle;
+    let revisedContent;
     try {
       const { text: raw } = await completeText(userPrompt, {
         feature: 'story-tweak',
@@ -67,7 +78,7 @@ Respond ONLY with a valid JSON object:
         temperature: 0.7,
       });
       if (!raw) return Response.json({ error: 'Empty AI response' }, { status: 500 });
-      const parsed = parseAiJsonObject(raw);
+      const parsed = await parseAndValidateChapter(raw, { feature: 'story-tweak' });
       revisedTitle = parsed.title;
       revisedContent = parsed.content;
     } catch (e) {
