@@ -37,25 +37,13 @@ export default function StoryReader({ chapters = [], spaceName, spaceEmoji = 'ğŸ
     return () => mq.removeEventListener('change', sync);
   }, []);
 
-  useEffect(() => {
-    const fn = (e) => {
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') turn(1);
-      if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')  turn(-1);
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', fn);
-    return () => window.removeEventListener('keydown', fn);
-  }, [page, turning]);
-
-  useEffect(() => { if (page >= 0) bump(); }, [page]);
-
-  const bump = () => {
+  const bump = useCallback(() => {
     setShowUI(true);
     clearTimeout(hideRef.current);
     hideRef.current = setTimeout(() => {
       if (!isTouchRef.current) setShowUI(false);
     }, 3500);
-  };
+  }, []);
 
   const turn = useCallback((dir) => {
     if (turning) return;
@@ -64,6 +52,18 @@ export default function StoryReader({ chapters = [], spaceName, spaceEmoji = 'ğŸ
     setDir(dir); setTurning(true);
     setTimeout(() => { setPage(next); setTurning(false); }, 300);
   }, [page, turning, total]);
+
+  useEffect(() => {
+    const fn = (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') turn(1);
+      if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')  turn(-1);
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', fn);
+    return () => window.removeEventListener('keydown', fn);
+  }, [turn, onClose]);
+
+  useEffect(() => { if (page >= 0) bump(); }, [page, bump]);
 
   const jumpTo = (i) => {
     if (turning) return;

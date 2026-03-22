@@ -6,12 +6,18 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint .",
+    "verify": "npm run lint && npm run build",
+    "verify:e2e": "playwright test",
     "pipeline": "node scripts/run-pipeline.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:user": "node scripts/create-test-user.mjs",
-    "backlog:export": "node scripts/export-feedback-backlog.mjs"
+    "backlog:export": "node scripts/export-feedback-backlog.mjs",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,jsx,mjs,cjs}": "eslint --max-warnings=0"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
@@ -32,6 +38,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "tailwindcss": "^4",
     "typescript": "5.9.3"
   }

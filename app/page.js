@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 const REQUEST_MAILTO =
   'mailto:hello@hemsaga.com?subject=Request%20access%20to%20Hemsaga%20beta&body=Hi%20Hemsaga%20team%2C%0A%0AI%27d%20like%20to%20request%20access%20to%20the%20beta.%0A%0A';
@@ -320,9 +321,9 @@ export default function Home() {
       )}
 
       <nav id="navbar">
-        <a href="/" className="nav-logo">
+        <Link href="/" className="nav-logo">
           <span>📖</span> Hemsaga
-        </a>
+        </Link>
         <div className="nav-links">
           <a href="#how">How it works</a>
           <a href="#family">Family</a>

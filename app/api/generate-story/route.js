@@ -127,7 +127,7 @@ Return the improved chapter as a valid JSON object with the same keys: {"title":
               content = reviewedParsed.content;
             }
           }
-        } catch (_) { /* use draft if review fails */ }
+        } catch { /* use draft if review fails */ }
         if (!title || !content) {
           title = draftParsed.title;
           content = draftParsed.content;
