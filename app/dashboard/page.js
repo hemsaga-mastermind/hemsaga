@@ -41,6 +41,7 @@ export default function Dashboard() {
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [showCartoon, setShowCartoon] = useState(false);
   const [showMobileMenu, setMobileMenu] = useState(false);
+  const [showMobileMore, setShowMobileMore] = useState(false);
   const [showSpacePicker, setShowSpacePicker] = useState(false);
   const [editMemId, setEditMemId] = useState(null);
   const [editMemDate, setEditMemDate] = useState('');
@@ -104,12 +105,12 @@ export default function Dashboard() {
 
   // Lock body scroll when any overlay is open (fixes iOS background scroll)
   useEffect(() => {
-    const modalOpen = showNewSpace || showAddMem || showInvite || showCartoon || showStory || showSpacePicker || showFeedback || !!editMemId;
+    const modalOpen = showNewSpace || showAddMem || showInvite || showCartoon || showStory || showSpacePicker || showFeedback || showMobileMore || !!editMemId;
     if (!modalOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
-  }, [showNewSpace, showAddMem, showInvite, showCartoon, showStory, showSpacePicker, showFeedback, editMemId]);
+  }, [showNewSpace, showAddMem, showInvite, showCartoon, showStory, showSpacePicker, showFeedback, showMobileMore, editMemId]);
 
   const init = async () => {
     try {
@@ -579,25 +580,39 @@ export default function Dashboard() {
           padding:6px 0 max(10px,env(safe-area-inset-bottom));
           box-shadow:0 -4px 20px rgba(44,26,14,.06);
         }
-        .hs-mob-nav-inner{display:flex;justify-content:space-around;align-items:center;max-width:480px;margin:0 auto;}
+        .hs-mob-nav-inner{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:2px 4px;max-width:100%;padding:0 4px;margin:0 auto;}
         .hs-mob-nav-item{
           display:flex;flex-direction:column;align-items:center;gap:2px;
-          padding:6px 10px;border:none;background:none;cursor:pointer;
-          font-family:var(--sans);font-size:9.5px;font-weight:500;
-          color:var(--ink4);transition:all .18s;min-width:56px;
-          border-radius:12px;
+          padding:6px 8px;border:none;background:none;cursor:pointer;
+          font-family:var(--sans);font-size:9px;font-weight:500;
+          color:var(--ink4);transition:all .18s;min-width:48px;flex:0 1 auto;
+          border-radius:12px;-webkit-tap-highlight-color:transparent;
         }
         .hs-mob-nav-item.active{color:var(--terra);}
         .hs-mob-nav-item.active span:first-child{transform:scale(1.15);}
         .hs-mob-nav-item span:first-child{font-size:22px;transition:transform .2s;display:block;}
+        .hs-mob-more-trigger{display:none;align-items:center;justify-content:center;width:40px;height:40px;margin-left:4px;border:1.5px solid var(--ivory3);border-radius:12px;background:var(--ivory);color:var(--ink3);font-size:20px;line-height:1;cursor:pointer;flex-shrink:0;}
+        .hs-mob-more-trigger:active{background:var(--ivory2);}
+        .hs-mob-more-row{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:none;border-radius:12px;background:var(--ivory);border:1px solid var(--ivory3);cursor:pointer;font-family:var(--sans);font-size:15px;font-weight:500;color:var(--ink);text-align:left;margin-bottom:8px;}
+        .hs-mob-more-row:active{background:var(--ivory2);}
+        .hs-mob-more-ic{width:40px;height:40px;border-radius:10px;background:rgba(196,114,74,.1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+        /* Space picker on white sheet: sidebar button styles are unreadable on light bg */
+        .hs-sheet-light .hs-space-btn{color:var(--ink2)!important;background:var(--ivory2)!important;border:1px solid var(--ivory3)!important;border-radius:10px!important;}
+        .hs-sheet-light .hs-space-btn:hover{background:#fff!important;color:var(--ink)!important;}
+        .hs-sheet-light .hs-space-btn.active{background:rgba(196,114,74,.1)!important;color:var(--terra)!important;border-color:rgba(196,114,74,.35)!important;}
+        .hs-sheet-light .hs-space-icon{background:rgba(196,114,74,.12)!important;}
 
         /* ── TABLET ── */
         @media(max-width:768px){
           .hs-sb{display:none;}
           .hs-main{margin-left:0;width:100%;}
           .hs-mob-nav{display:block;}
+          .hs-mob-more-trigger{display:flex;}
           /* Topbar */
-          .hs-topbar{padding:0 16px;height:52px;}
+          .hs-topbar{padding:0 12px;height:52px;gap:6px;}
+          .hs-topbar-right{flex-shrink:1;min-width:0;gap:6px;}
+          .hs-topbar .btn-primary{padding:7px 10px!important;font-size:10.5px!important;}
+          .hs-topbar .btn-ghost{padding:6px 10px!important;font-size:10px!important;}
           .hs-greeting{font-size:14px;}
           /* Content */
           .hs-content{padding:16px 14px 96px;width:100%;}
@@ -636,6 +651,8 @@ export default function Dashboard() {
 
         /* ── SMALL PHONES (iPhone SE, older Android) ── */
         @media(max-width:390px){
+          .hs-lang-compact-wrap button span:nth-of-type(2){display:none;}
+          .hs-lang-compact-wrap button{padding:5px 10px!important;}
           .hs-content{padding:12px 12px 96px;}
           .hs-hero{padding:20px 16px 24px;}
           .hs-hero-title{font-size:18px!important;}
@@ -713,7 +730,7 @@ export default function Dashboard() {
           </div>
           <style>{`@media(min-width:769px){#hs-desk-greet{display:flex!important;}#hs-mob-greet{display:none!important;}}`}</style>
           <div className="hs-topbar-right">
-            <LangToggle/>
+            <div className="hs-lang-compact-wrap"><LangToggle/></div>
             {activeSpace && <>
               <button className="btn-ghost" onClick={()=>setShowAddMem(true)} style={{}} id="hs-desk-add">+ Memory</button>
               <button className="btn-primary" onClick={()=>generateStory(false)} disabled={generating||totalMemCount===0} style={{padding:'7px 14px',fontSize:'11.5px'}}>
@@ -721,13 +738,14 @@ export default function Dashboard() {
               </button>
               <style>{`@media(max-width:768px){#hs-desk-add{display:none!important;}}`}</style>
             </>}
+            <button type="button" className="hs-mob-more-trigger" aria-label={t.moreMenuTitle} title={t.more} onClick={()=>setShowMobileMore(true)}>⋮</button>
           </div>
         </header>
 
         {/* Mobile: space switcher sheet (when multiple spaces) */}
         {showSpacePicker && spaces.length > 1 && (
           <div className="hs-overlay" style={{alignItems:'flex-end'}} onClick={()=>setShowSpacePicker(false)}>
-            <div className="hs-modal" style={{maxHeight:'60vh'}} onClick={e=>e.stopPropagation()}>
+            <div className="hs-modal hs-sheet-light" style={{maxHeight:'60vh'}} onClick={e=>e.stopPropagation()}>
               <div className="hs-modal-hd"><div className="hs-modal-bar"/><h2 className="hs-modal-title">{t.switchSpace || 'Switch space'}</h2><p className="hs-modal-desc">{t.switchSpaceDesc || 'Choose which story space to view.'}</p></div>
               <div className="hs-modal-body" style={{paddingTop:0}}>
                 {spaces.map(s => (
@@ -737,6 +755,35 @@ export default function Dashboard() {
                   </button>
                 ))}
                 <button type="button" className="btn-ghost" style={{marginTop:8,width:'100%'}} onClick={()=>setShowSpacePicker(false)}>{t.cancel}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile: More menu (sidebar actions hidden on small screens) */}
+        {showMobileMore && (
+          <div className="hs-overlay" style={{alignItems:'flex-end'}} onClick={()=>setShowMobileMore(false)}>
+            <div className="hs-modal" style={{maxHeight:'85vh'}} onClick={e=>e.stopPropagation()}>
+              <div className="hs-modal-hd"><div className="hs-modal-bar"/><h2 className="hs-modal-title">{t.moreMenuTitle}</h2><p className="hs-modal-desc">{t.moreMenuDesc}</p></div>
+              <div className="hs-modal-body" style={{paddingTop:0}}>
+                {activeSpace && <>
+                  <button type="button" className="hs-mob-more-row" onClick={()=>{ setShowMobileMore(false); setShowInvite(true); setInviteLink(''); }}>
+                    <span className="hs-mob-more-ic">👥</span><span>{t.inviteSomeone}</span>
+                  </button>
+                  <button type="button" className="hs-mob-more-row" onClick={()=>{ setShowMobileMore(false); setShowCartoon(true); }}>
+                    <span className="hs-mob-more-ic">🎨</span><span>{t.cartoonAvatar}</span>
+                  </button>
+                </>}
+                <button type="button" className="hs-mob-more-row" onClick={()=>{ setShowMobileMore(false); setFeedbackSent(false); setFeedbackContent(''); setFeedbackContact(''); setError(''); setShowFeedback(true); }}>
+                  <span className="hs-mob-more-ic">💬</span><span>{t.feedback}</span>
+                </button>
+                <button type="button" className="hs-mob-more-row" onClick={()=>{ setShowMobileMore(false); setShowNew(true); }}>
+                  <span className="hs-mob-more-ic">＋</span><span>{t.newSpace}</span>
+                </button>
+                <button type="button" className="hs-mob-more-row" style={{borderColor:'rgba(180,80,80,.25)',color:'#8c4a3a'}} onClick={async()=>{ setShowMobileMore(false); await supabase.auth.signOut(); router.push('/auth'); }}>
+                  <span className="hs-mob-more-ic">↪</span><span>{t.signOut}</span>
+                </button>
+                <button type="button" className="btn-ghost" style={{marginTop:8,width:'100%'}} onClick={()=>setShowMobileMore(false)}>{t.close}</button>
               </div>
             </div>
           </div>
