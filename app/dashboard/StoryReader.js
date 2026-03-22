@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 
 /*
   StoryReader — Apple Books–inspired
@@ -12,17 +12,29 @@ export default function StoryReader({ chapters = [], spaceName, spaceEmoji = '�
   const [page, setPage]         = useState(-1);   // -1=cover, 0..n-1=chapters, n=end
   const [turning, setTurning]   = useState(false);
   const [direction, setDir]     = useState(1);
-  const [isMobile, setMobile]   = useState(false);
+  /** Phones: default true so first paint isn’t desktop (invisible nav + no swipe). Desktop fixes in layout effect. */
+  const [isMobile, setMobile]   = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : true
+  );
   const [showUI, setShowUI]     = useState(true);
+  const [isTouchUi, setTouchUi] = useState(false);
   /** Touch start X — ref avoids stale closure in onTouchEnd (React state would lag). */
   const touchStartXRef = useRef(null);
   const hideRef = useRef(null);
+  const isTouchRef = useRef(false);
   const total = chapters.length;
 
-  useEffect(() => {
-    const check = () => setMobile(window.innerWidth < 768);
-    check(); window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
+  useLayoutEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const sync = () => setMobile(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    const touch =
+      typeof window !== 'undefined' &&
+      ('ontouchstart' in window || window.matchMedia('(pointer: coarse)').matches);
+    isTouchRef.current = touch;
+    setTouchUi(touch);
+    return () => mq.removeEventListener('change', sync);
   }, []);
 
   useEffect(() => {
@@ -40,7 +52,9 @@ export default function StoryReader({ chapters = [], spaceName, spaceEmoji = '�
   const bump = () => {
     setShowUI(true);
     clearTimeout(hideRef.current);
-    hideRef.current = setTimeout(() => setShowUI(false), 3500);
+    hideRef.current = setTimeout(() => {
+      if (!isTouchRef.current) setShowUI(false);
+    }, 3500);
   };
 
   const turn = useCallback((dir) => {
@@ -63,15 +77,26 @@ export default function StoryReader({ chapters = [], spaceName, spaceEmoji = '�
     touchStartXRef.current = null;
     if (x0 === null) return;
     const dx = x0 - e.changedTouches[0].clientX;
-    if (Math.abs(dx) > 44) turn(dx > 0 ? 1 : -1);
+    /* Slightly lower threshold so page turns reliably on small screens */
+    if (Math.abs(dx) > 36) turn(dx > 0 ? 1 : -1);
   };
 
   const ch = (page >= 0 && page < total) ? chapters[page] : null;
   const progress = ((page + 1) / total) * 100;
 
-  const paras = (text = '') =>
+  const paras = (text = '', mobile = false) =>
     text.split(/\n+/).filter(p => p.trim()).map((p, i) => (
-      <p key={i} style={{ margin:'0 0 1.2em', textIndent: i === 0 ? 0 : '1.8em', lineHeight:1.95 }}>{p}</p>
+      <p key={i} style={{
+        margin: mobile ? '0 0 1.35em' : '0 0 1.2em',
+        textIndent: mobile ? 0 : (i === 0 ? 0 : '1.8em'),
+        lineHeight: mobile ? 1.85 : 1.95,
+        fontSize: mobile ? 'clamp(17px, 4.6vw, 20px)' : undefined,
+        color: mobile ? '#1a1008' : undefined,
+        hyphens: mobile ? 'auto' : undefined,
+        WebkitHyphens: mobile ? 'auto' : undefined,
+        overflowWrap: 'break-word',
+        wordBreak: 'break-word',
+      }}>{p}</p>
     ));
 
   const CSS = `
@@ -91,27 +116,27 @@ export default function StoryReader({ chapters = [], spaceName, spaceEmoji = '�
 
   /* ─── COVER ─── */
   if (page < 0) return (
-    <div style={{ position:'fixed',inset:0,zIndex:1000,background:'linear-gradient(155deg,#160C04 0%,#2D1A0B 55%,#160C04 100%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontFamily:"'Lora',Georgia,serif" }}
+    <div style={{ position:'fixed',inset:0,zIndex:2000,background:'linear-gradient(155deg,#160C04 0%,#2D1A0B 55%,#160C04 100%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontFamily:"'Lora',Georgia,serif",paddingTop:'env(safe-area-inset-top)' }}
       onTouchStart={onTS} onTouchEnd={onTE}>
       <style>{CSS}</style>
       {[[{top:'-20%',right:'-12%',w:500,c:'rgba(196,114,74,.07)'},{bottom:'-18%',left:'-10%',w:420,c:'rgba(196,114,74,.05)'}]].flat().map((o,i)=>(
         <div key={i} style={{position:'absolute',...o,height:o.w,borderRadius:'50%',background:`radial-gradient(circle,${o.c},transparent)`,filter:'blur(50px)',pointerEvents:'none'}}/>
       ))}
-      <button onClick={onClose} style={{position:'absolute',top:18,right:18,background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.12)',borderRadius:'50%',width:38,height:38,color:'rgba(250,247,242,.6)',fontSize:18,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+      <button onClick={onClose} style={{position:'absolute',top:'max(18px,env(safe-area-inset-top))',right:'max(18px,env(safe-area-inset-right))',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.12)',borderRadius:'50%',width:44,height:44,color:'rgba(250,247,242,.85)',fontSize:20,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',WebkitTapHighlightColor:'transparent'}}>×</button>
       <div style={{animation:'sr-breathe 4s ease-in-out infinite',marginBottom:26}}>
         <div style={{width:106,height:106,borderRadius:'50%',overflow:'hidden',animation:'sr-glow 4.5s ease-in-out infinite',background:'rgba(196,114,74,.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:44}}>
           {avatarUrl ? <img src={avatarUrl} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/> : spaceEmoji}
         </div>
       </div>
-      <div style={{textAlign:'center',animation:'sr-fadein .9s ease both',maxWidth:500,padding:'0 32px'}}>
-        <div style={{fontSize:10,letterSpacing:4,textTransform:'uppercase',color:'rgba(196,114,74,.55)',marginBottom:14}}>A Story by Hemsaga</div>
-        <h1 style={{fontSize:'clamp(26px,6vw,46px)',fontWeight:600,color:'rgba(250,247,242,.95)',margin:'0 0 10px',lineHeight:1.2}}>{spaceName}</h1>
-        <p style={{fontSize:13.5,color:'rgba(250,247,242,.32)',margin:'0 0 38px',fontStyle:'italic'}}>{total} {total===1?'chapter':'chapters'} · A living story</p>
-        <button onClick={()=>turn(1)} style={{background:'rgba(196,114,74,.88)',color:'white',border:'none',borderRadius:40,padding:'13px 34px',fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:14,fontWeight:500,letterSpacing:.8,cursor:'pointer',boxShadow:'0 8px 30px rgba(196,114,74,.38)'}}>
+      <div style={{textAlign:'center',animation:'sr-fadein .9s ease both',maxWidth:500,padding:'0 max(24px,env(safe-area-inset-left)) 0 max(24px,env(safe-area-inset-right))'}}>
+        <div style={{fontSize:11,letterSpacing:4,textTransform:'uppercase',color:'rgba(196,114,74,.75)',marginBottom:14}}>A Story by Hemsaga</div>
+        <h1 style={{fontSize:'clamp(28px,7vw,46px)',fontWeight:600,color:'rgba(250,247,242,.98)',margin:'0 0 10px',lineHeight:1.2}}>{spaceName}</h1>
+        <p style={{fontSize:15,color:'rgba(250,247,242,.55)',margin:'0 0 38px',fontStyle:'italic',lineHeight:1.5}}>{total} {total===1?'chapter':'chapters'} · A living story</p>
+        <button type="button" onClick={()=>turn(1)} style={{background:'rgba(196,114,74,.95)',color:'white',border:'none',borderRadius:40,padding:'16px 40px',fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:16,fontWeight:600,letterSpacing:.5,cursor:'pointer',boxShadow:'0 8px 30px rgba(196,114,74,.38)',WebkitTapHighlightColor:'transparent'}}>
           Begin Reading →
         </button>
       </div>
-      {total>1&&<div style={{position:'absolute',bottom:26,display:'flex',gap:6}}>
+      {total>1&&<div style={{position:'absolute',bottom:'max(26px,env(safe-area-inset-bottom))',display:'flex',gap:6}}>
         {chapters.map((_,i)=><div key={i} style={{width:6,height:6,borderRadius:'50%',background:`rgba(196,114,74,${i === 0 ? 0.7 : 0.2})`}}/>)}
       </div>}
     </div>
@@ -119,7 +144,7 @@ export default function StoryReader({ chapters = [], spaceName, spaceEmoji = '�
 
   /* ─── END PAGE ─── */
   if (page >= total) return (
-    <div style={{position:'fixed',inset:0,zIndex:1000,background:'linear-gradient(155deg,#160C04,#2D1A0B)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontFamily:"'Lora',Georgia,serif"}}
+    <div style={{position:'fixed',inset:0,zIndex:2000,background:'linear-gradient(155deg,#160C04,#2D1A0B)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontFamily:"'Lora',Georgia,serif",paddingTop:'env(safe-area-inset-top)'}}
       onTouchStart={onTS} onTouchEnd={onTE}>
       <style>{CSS}</style>
       <div style={{textAlign:'center',animation:'sr-fadein .9s ease both',padding:'0 32px',maxWidth:460}}>
@@ -137,45 +162,68 @@ export default function StoryReader({ chapters = [], spaceName, spaceEmoji = '�
   );
 
   /* ─── MOBILE SINGLE PAGE ─── */
-  if (isMobile) return (
-    <div style={{position:'fixed',inset:0,zIndex:1000,background:'#FDF8EE',display:'flex',flexDirection:'column',fontFamily:"'Lora',Georgia,serif",color:'#2C1A0E'}}
+  if (isMobile) {
+    if (!ch || total === 0) {
+      return (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: '#FDF8EE', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: "'Lora',Georgia,serif", color: '#2C1A0E', textAlign: 'center' }}>
+          <style>{CSS}</style>
+          <p style={{ fontSize: 16, lineHeight: 1.6 }}>No chapter to display yet. Try generating the story again.</p>
+          <button type="button" onClick={onClose} style={{ position: 'absolute', top: 'max(14px, env(safe-area-inset-top))', right: 16, background: 'rgba(44,26,14,.07)', border: 'none', borderRadius: '50%', width: 40, height: 40, color: '#8C6B4E', fontSize: 18, cursor: 'pointer' }}>×</button>
+        </div>
+      );
+    }
+    return (
+    <div style={{position:'fixed',inset:0,zIndex:2000,background:'#FDF8EE',display:'flex',flexDirection:'column',fontFamily:"'Lora',Georgia,serif",color:'#2C1A0E',paddingTop:'env(safe-area-inset-top)'}}
       onTouchStart={onTS} onTouchEnd={onTE}>
       <style>{CSS}</style>
       {/* Progress */}
       <div style={{height:3,background:'rgba(196,114,74,.12)',flexShrink:0}}>
-        <div style={{height:'100%',width:`${progress}%`,background:'rgba(196,114,74,.55)',transition:'width .4s'}}/>
+        <div style={{height:'100%',width:`${total ? progress : 0}%`,background:'rgba(196,114,74,.55)',transition:'width .4s'}}/>
       </div>
       {/* Header */}
-      <div style={{padding:'14px 20px 0',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
-        <span style={{fontSize:9,letterSpacing:3,textTransform:'uppercase',color:'rgba(196,114,74,.55)'}}>{spaceEmoji} {spaceName}</span>
-        <button onClick={onClose} style={{background:'rgba(44,26,14,.07)',border:'none',borderRadius:'50%',width:32,height:32,color:'#8C6B4E',fontSize:15,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+      <div style={{padding:'10px 16px 0',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0,gap:8}}>
+        <span style={{fontSize:10,letterSpacing:2,textTransform:'uppercase',color:'rgba(196,114,74,.65)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,minWidth:0}}>{spaceEmoji} {spaceName}</span>
+        <button type="button" onClick={onClose} aria-label="Close" style={{background:'rgba(44,26,14,.08)',border:'none',borderRadius:'50%',width:44,height:44,color:'#5C3D24',fontSize:20,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>×</button>
       </div>
       {/* Page content */}
-      <div className={turning ? (direction>0?'sr-page-anim-fwd':'sr-page-anim-bwd') : ''} style={{flex:1,overflowY:'auto',padding:'24px 26px 20px'}}>
-        <div style={{textAlign:'center',marginBottom:24}}>
-          <div style={{fontSize:9,letterSpacing:3,textTransform:'uppercase',color:'rgba(196,114,74,.55)',marginBottom:7}}>Chapter {ch.chapter_number}</div>
-          <h2 style={{fontSize:19,fontWeight:600,color:'#2C1A0E',margin:0,lineHeight:1.3}}>{ch.title}</h2>
-          <div style={{width:32,height:1.5,background:'rgba(196,114,74,.5)',margin:'11px auto 0',borderRadius:2}}/>
+      <div className={turning ? (direction>0?'sr-page-anim-fwd':'sr-page-anim-bwd') : ''} style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch',padding:'18px 20px 12px',minHeight:0}}>
+        <div style={{textAlign:'center',marginBottom:20}}>
+          <div style={{fontSize:10,letterSpacing:2.5,textTransform:'uppercase',color:'rgba(196,114,74,.6)',marginBottom:8}}>Chapter {ch.chapter_number}</div>
+          <h2 style={{fontSize:'clamp(20px, 5.2vw, 24px)',fontWeight:600,color:'#1a1008',margin:0,lineHeight:1.25}}>{ch.title}</h2>
+          <div style={{width:36,height:2,background:'rgba(196,114,74,.55)',margin:'12px auto 0',borderRadius:2}}/>
         </div>
-        <div style={{textAlign:'justify',fontSize:16}}>{paras(ch.content)}</div>
+        <div style={{textAlign:'left',maxWidth:'42rem',margin:'0 auto'}}>{paras(typeof ch.content === 'string' ? ch.content : String(ch.content || ''), true)}</div>
       </div>
-      {/* Bottom nav */}
-      <div style={{flexShrink:0,borderTop:'1px solid rgba(196,114,74,.1)',background:'#FDF8EE',padding:'10px 28px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <button onClick={()=>turn(-1)} disabled={page<=0} style={{background:'none',border:'none',color:page<=0?'transparent':'#C4724A',fontSize:22,cursor:'pointer',padding:6}}>←</button>
-        <div style={{display:'flex',gap:5}}>
+      {/* Bottom nav — always tappable; safe area for home indicator */}
+      <div style={{flexShrink:0,borderTop:'1px solid rgba(196,114,74,.12)',background:'#FDF8EE',padding:'12px 16px max(14px, env(safe-area-inset-bottom))',display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+        <button type="button" aria-label="Previous chapter" onClick={()=>turn(-1)} disabled={page<=0} style={{background:'none',border:'none',color:page<=0?'rgba(196,114,74,.2)':'#C4724A',fontSize:26,cursor:page<=0?'default':'pointer',padding:'10px 14px',minWidth:48,minHeight:48}}>←</button>
+        <div style={{display:'flex',gap:6,flexWrap:'wrap',justifyContent:'center',flex:1,maxHeight:56,overflowY:'auto',alignItems:'center'}}>
           {chapters.map((_,i)=>(
-            <div key={i} onClick={()=>jumpTo(i)} style={{width:i===page?20:6,height:6,borderRadius:3,background:i===page?'rgba(196,114,74,.8)':'rgba(196,114,74,.2)',cursor:'pointer',transition:'all .3s'}}/>
+            <button key={i} type="button" aria-label={`Chapter ${i + 1}`} onClick={()=>jumpTo(i)} style={{width:i===page?22:8,height:8,borderRadius:4,background:i===page?'rgba(196,114,74,.85)':'rgba(196,114,74,.22)',cursor:'pointer',transition:'all .3s',border:'none',padding:0,flexShrink:0}}/>
           ))}
         </div>
-        <button onClick={()=>turn(1)} style={{background:'none',border:'none',color:'#C4724A',fontSize:22,cursor:'pointer',padding:6}}>{page>=total-1?'✓':'→'}</button>
+        <button type="button" aria-label={page>=total-1?'Done':'Next chapter'} onClick={()=>turn(1)} style={{background:'none',border:'none',color:'#C4724A',fontSize:26,cursor:'pointer',padding:'10px 14px',minWidth:48,minHeight:48}}>{page>=total-1?'✓':'→'}</button>
       </div>
     </div>
-  );
+    );
+  }
 
   /* ─── DESKTOP BOOK SPREAD ─── */
+  if (!ch || total === 0) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: '#26160A', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <style>{CSS}</style>
+        <p style={{ color: 'rgba(250,247,242,.75)', fontFamily: "'Plus Jakarta Sans',sans-serif", textAlign: 'center', maxWidth: 320 }}>No chapter to display.</p>
+        <button type="button" onClick={onClose} style={{ position: 'absolute', top: 24, right: 24, background: 'rgba(255,255,255,.1)', border: 'none', borderRadius: '50%', width: 40, height: 40, color: '#fff', fontSize: 18, cursor: 'pointer' }}>×</button>
+      </div>
+    );
+  }
+  const chromeVisible = showUI || isTouchUi;
   return (
-    <div style={{position:'fixed',inset:0,zIndex:1000,background:'#26160A',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Lora',Georgia,serif"}}
-      onMouseMove={bump}>
+    <div style={{position:'fixed',inset:0,zIndex:2000,background:'#26160A',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Lora',Georgia,serif"}}
+      onMouseMove={bump}
+      onTouchStart={onTS}
+      onTouchEnd={onTE}>
       <style>{CSS}</style>
 
       {/* Progress top */}
@@ -239,7 +287,7 @@ export default function StoryReader({ chapters = [], spaceName, spaceEmoji = '�
       </div>
 
       {/* Controls bar */}
-      <div style={{position:'fixed',bottom:22,left:'50%',transform:'translateX(-50%)',display:'flex',alignItems:'center',gap:10,background:'rgba(22,12,4,.8)',backdropFilter:'blur(16px)',border:'1px solid rgba(196,114,74,.14)',borderRadius:40,padding:'9px 18px',transition:'opacity .4s',opacity:showUI?1:0,pointerEvents:showUI?'all':'none'}}>
+      <div style={{position:'fixed',bottom:'max(22px, env(safe-area-inset-bottom))',left:'50%',transform:'translateX(-50%)',display:'flex',alignItems:'center',gap:10,background:'rgba(22,12,4,.88)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',border:'1px solid rgba(196,114,74,.14)',borderRadius:40,padding:'10px 18px',transition:'opacity .4s',opacity:chromeVisible?1:0,pointerEvents:chromeVisible?'all':'none',maxWidth:'calc(100vw - 24px)',flexWrap:'wrap',justifyContent:'center'}}>
         <button onClick={()=>{turn(-1);bump()}} disabled={page<=0} style={{background:'none',border:'none',color:page<=0?'rgba(250,247,242,.18)':'rgba(250,247,242,.65)',cursor:page<=0?'default':'pointer',fontSize:14,padding:3}}>←</button>
         {chapters.map((_,i)=>(
           <div key={i} onClick={()=>jumpTo(i)} style={{width:i===page?20:7,height:7,borderRadius:4,background:i===page?'rgba(196,114,74,.9)':'rgba(250,247,242,.2)',cursor:'pointer',transition:'all .3s'}}/>
