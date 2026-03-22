@@ -248,7 +248,7 @@ export default function Dashboard() {
       }
     } catch (e) {
       console.error('generateStory exception:', e);
-      setError('Connection error — check your internet and try again.');
+      setError(e?.message || 'Could not generate the story. Check your connection and try again.');
     }
     setGenerating(false);
   };
@@ -827,17 +827,23 @@ export default function Dashboard() {
         {/* HOME */}
         {activeSpace && view==='home' && (
           <div className="hs-content hs-stagger">
-            <button className="hs-hero" style={{background:theme.grad}} onClick={()=>memories.length>0?generateStory(false):setShowAddMem(true)} disabled={generating||totalMemCount===0}>
+            <button className="hs-hero" style={{background:theme.grad}} onClick={()=>totalMemCount>0?generateStory(false):setShowAddMem(true)} disabled={generating||totalMemCount===0}>
               {activeSpace.cartoon_url
                 ? <div className="hs-hero-avatar"><img src={activeSpace.cartoon_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/></div>
                 : <div className="hs-hero-avatar" style={{background:'rgba(255,255,255,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:36}}>{activeSpace.cover_emoji}</div>}
               <div className="hs-hero-eyebrow">{t.aiStoryEngine}</div>
               {generating
                 ? <div style={{display:'flex',alignItems:'center',gap:12,position:'relative',zIndex:1}}><div className="hs-hero-spinner"/><div className="hs-hero-title">Writing the next chapter…</div></div>
-                : <><div className="hs-hero-title">{memories.length===0?<>Start <em>{activeSpace.name}</em></>:<>Continue <em>{activeSpace.name}</em></>}</div>
+                : <><div className="hs-hero-title">{totalMemCount===0?<>Start <em>{activeSpace.name}</em></>:<>Continue <em>{activeSpace.name}</em></>}</div>
                     <div className="hs-hero-sub">{totalMemCount===0?t.firstMemoryDesc:t.memoriesDesc(totalMemCount)}</div>
                     <div className="hs-hero-cta"><span>{totalMemCount===0?t.addFirstMemory:t.generateNextChapter}</span><span className="hs-hero-arr">→</span></div></>}
             </button>
+            {error && (
+              <div className="hs-err" style={{marginTop:16,marginBottom:8,display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
+                <span style={{flex:1,minWidth:0}}>⚠ {error}</span>
+                <button type="button" className="btn-ghost" style={{padding:'6px 12px',fontSize:11,flexShrink:0}} onClick={()=>setError('')}>{t.dismiss}</button>
+              </div>
+            )}
 
             <div className="hs-sec-row"><span className="hs-sec-lbl">{t.atAGlance}</span></div>
             <div className="hs-stats-g">
@@ -989,14 +995,23 @@ export default function Dashboard() {
         {activeSpace && view==='story' && (
           <div className="hs-content hs-stagger">
             <div className="hs-sec-row"><span className="hs-sec-lbl">{t.theStoryOf(activeSpace.name)}</span></div>
-            {memories.length===0
+            {error && (
+              <div className="hs-err" style={{marginBottom:16,display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
+                <span style={{flex:1,minWidth:0}}>⚠ {error}</span>
+                <button type="button" className="btn-ghost" style={{padding:'6px 12px',fontSize:11,flexShrink:0}} onClick={()=>setError('')}>{t.dismiss}</button>
+              </div>
+            )}
+            {totalMemCount===0
               ? <div className="hs-empty"><div className="hs-empty-icon">📖</div><div className="hs-empty-title">{t.noChaptersTitle}</div><div className="hs-empty-desc">{t.noChaptersDesc}</div></div>
-              : <div style={{background:'#fff',border:'1px solid var(--ivory3)',borderRadius:'var(--r)',padding:'52px 44px',textAlign:'center',boxShadow:'var(--shmd)'}}>
+              : <div style={{background:'#fff',border:'1px solid var(--ivory3)',borderRadius:'var(--r)',padding:'clamp(28px,6vw,52px) clamp(20px,5vw,44px)',textAlign:'center',boxShadow:'var(--shmd)'}}>
                   {activeSpace.cartoon_url&&<img src={activeSpace.cartoon_url} alt="" style={{width:76,height:76,borderRadius:'50%',objectFit:'cover',border:'3px solid var(--parchment)',display:'block',margin:'0 auto 18px'}}/>}
-                  <div style={{fontFamily:'var(--serif)',fontSize:32,fontWeight:600,color:'var(--ink)',marginBottom:7}}>{activeSpace.name}</div>
-                  <div style={{fontSize:13,color:'var(--ink4)',marginBottom:28}}>{memories.length} memories · A growing story</div>
-                  <button className="btn-primary" style={{margin:'0 auto',padding:'12px 32px',borderRadius:14}} onClick={()=>generateStory(false)} disabled={generating}>
-                    {generating?'✦ Writing…':'✦ Read & Generate Chapter'}
+                  <div style={{fontFamily:'var(--serif)',fontSize:'clamp(22px,6vw,32px)',fontWeight:600,color:'var(--ink)',marginBottom:7}}>{activeSpace.name}</div>
+                  <div style={{fontSize:13,color:'var(--ink4)',marginBottom:12,lineHeight:1.5}}>{t.memories_count(totalMemCount)}</div>
+                  {memories.length===0 && totalMemCount>0 && (
+                    <p style={{fontSize:13,color:'var(--terra)',marginBottom:20,maxWidth:340,marginLeft:'auto',marginRight:'auto',lineHeight:1.6}}>{t.storyFamilyMemoriesHint}</p>
+                  )}
+                  <button type="button" className="btn-primary" style={{margin:'0 auto',padding:'14px 28px',borderRadius:14,minHeight:48,WebkitTapHighlightColor:'transparent'}} onClick={()=>generateStory(false)} disabled={generating}>
+                    {generating?t.writing:t.readAndGenerate}
                   </button>
                 </div>}
           </div>
