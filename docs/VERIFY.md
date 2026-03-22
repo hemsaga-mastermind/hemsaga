@@ -6,7 +6,7 @@ Git hooks run automatically when hooks are installed (`npm install` runs `prepar
 
 | When | What |
 |------|------|
-| **`git commit`** | **lint-staged** — ESLint on staged `*.js, *.jsx, *.mjs, *.cjs` only (`--max-warnings=0`). |
+| **`git commit`** | **lint-staged** — ESLint on staged `*.js, *.jsx, *.mjs, *.cjs` only (errors block commit; warnings allowed). |
 | **`git push`** | **`npm run verify`** — full ESLint on the repo + **`next build`** (catches broken imports/types). |
 
 E2E is **not** in hooks by default (slow, needs dev server + test user). Run manually or in CI:
