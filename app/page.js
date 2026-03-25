@@ -7,6 +7,10 @@ const REQUEST_MAILTO =
 
 export default function Home() {
   const [requestOpen, setRequestOpen] = useState(false);
+  const [requestEmail, setRequestEmail] = useState('');
+  const [requestMessage, setRequestMessage] = useState('');
+  const [requestSubmitting, setRequestSubmitting] = useState(false);
+  const [requestFeedback, setRequestFeedback] = useState('');
 
   useEffect(() => {
     const navbar = document.getElementById('navbar');
@@ -258,6 +262,17 @@ export default function Home() {
           margin-bottom: 20px; word-break: break-all;
         }
         .request-modal-btns { display: flex; flex-direction: column; gap: 10px; }
+        .request-modal .req-field {
+          width: 100%; padding: 12px 14px; margin-bottom: 12px;
+          border: 1px solid rgba(201,184,168,0.5); border-radius: 10px;
+          font-family: 'Jost', sans-serif; font-size: 14px; color: var(--text-dark);
+          background: #fff; box-sizing: border-box;
+        }
+        .request-modal textarea.req-field { min-height: 88px; resize: vertical; }
+        .request-modal .req-hint { font-size: 12px; color: var(--text-mid); margin: -6px 0 14px; line-height: 1.5; }
+        .request-modal .req-msg { font-size: 13px; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; }
+        .request-modal .req-msg.ok { background: rgba(214,229,216,0.45); color: #3d5a40; }
+        .request-modal .req-msg.err { background: rgba(242,228,220,0.7); color: #6b4226; }
         .request-modal .btn-close-modal {
           position: absolute; top: 14px; right: 14px;
           width: 36px; height: 36px; border: none; border-radius: 50%;
@@ -305,13 +320,68 @@ export default function Home() {
             <button type="button" className="btn-close-modal" aria-label="Close" onClick={() => setRequestOpen(false)}>×</button>
             <h3 id="request-title">Request access</h3>
             <p>
-              We&apos;re onboarding in small waves. Send us a note and we&apos;ll reach out when there&apos;s a spot.
+              We&apos;re onboarding in small waves. Leave your email — we&apos;ll email you when you&apos;re cleared to sign up.
             </p>
-            <p className="request-email">hello@hemsaga.com</p>
+            {requestFeedback && (
+              <div className={`req-msg ${requestFeedback.startsWith('✓') ? 'ok' : 'err'}`}>{requestFeedback}</div>
+            )}
+            <input
+              type="email"
+              className="req-field"
+              placeholder="your@email.com"
+              autoComplete="email"
+              value={requestEmail}
+              onChange={(e) => setRequestEmail(e.target.value)}
+              disabled={requestSubmitting}
+            />
+            <textarea
+              className="req-field"
+              placeholder="Optional: a few words about you or your family (helps us prioritize)"
+              value={requestMessage}
+              onChange={(e) => setRequestMessage(e.target.value)}
+              disabled={requestSubmitting}
+            />
+            <p className="req-hint">Prefer email? <a href={REQUEST_MAILTO} style={{ color: 'var(--accent)' }}>Open your mail app</a></p>
             <div className="request-modal-btns">
-              <a href={REQUEST_MAILTO} className="btn-primary" style={{ textAlign: 'center' }} onClick={() => setRequestOpen(false)}>
-                Open email
-              </a>
+              <button
+                type="button"
+                className="btn-primary"
+                style={{ textAlign: 'center' }}
+                disabled={requestSubmitting}
+                onClick={async () => {
+                  setRequestFeedback('');
+                  const em = requestEmail.trim();
+                  if (!em || !em.includes('@')) {
+                    setRequestFeedback('Please enter a valid email.');
+                    return;
+                  }
+                  setRequestSubmitting(true);
+                  try {
+                    const res = await fetch('/api/access-request', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ email: em, message: requestMessage.trim() }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (res.status === 429) {
+                      setRequestFeedback(`Too many tries. Wait ${data.retryAfter || 60}s and try again.`);
+                    } else if (data.error) {
+                      setRequestFeedback(data.error);
+                    } else if (data.duplicate) {
+                      setRequestFeedback('✓ We already have your request — sit tight.');
+                    } else {
+                      setRequestFeedback('✓ Thanks! We’ll be in touch.');
+                      setRequestEmail('');
+                      setRequestMessage('');
+                    }
+                  } catch {
+                    setRequestFeedback('Something went wrong. Try again or use email below.');
+                  }
+                  setRequestSubmitting(false);
+                }}
+              >
+                {requestSubmitting ? 'Sending…' : 'Submit request'}
+              </button>
               <button type="button" className="btn-ghost" onClick={() => setRequestOpen(false)}>
                 Close
               </button>

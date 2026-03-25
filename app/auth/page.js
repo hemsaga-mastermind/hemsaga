@@ -16,13 +16,47 @@ export default function AuthPage() {
     setLoading(true);
     setMessage('');
 
+    const emailTrim = email.trim();
+    if (!emailTrim || !emailTrim.includes('@')) {
+      setMessage('Please enter a valid email.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const betaRes = await fetch('/api/auth/beta-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailTrim }),
+      });
+      const beta = await betaRes.json().catch(() => ({}));
+      if (betaRes.status === 429) {
+        setMessage(`Too many checks. Try again in ${beta.retryAfter || 60} seconds.`);
+        setLoading(false);
+        return;
+      }
+      if (beta.enforced && !beta.allowed) {
+        setMessage(
+          'This email is not on the beta access list yet. If you used Request access, we will email you when a spot opens — or write hello@hemsaga.com.'
+        );
+        setLoading(false);
+        return;
+      }
+    } catch {
+      setMessage('Could not verify access. Check your connection and try again.');
+      setLoading(false);
+      return;
+    }
+
     if (isLogin) {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ email: emailTrim, password });
       if (error) setMessage(error.message);
       else router.push('/dashboard');
     } else {
-      const { error } = await supabase.auth.signUp({ email, password,
-        options: { data: { full_name: name } }
+      const { error } = await supabase.auth.signUp({
+        email: emailTrim,
+        password,
+        options: { data: { full_name: name } },
       });
       if (error) setMessage(error.message);
       else setMessage('Check your email to confirm your account!');

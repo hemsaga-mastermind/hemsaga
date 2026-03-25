@@ -47,6 +47,12 @@ export default function Dashboard() {
   const [editMemDate, setEditMemDate] = useState('');
   const [savingDate, setSavingDate] = useState(false);
 
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPendingCount, setAdminPendingCount] = useState(0);
+  const [accessRequests, setAccessRequests] = useState([]);
+  const [adminListLoading, setAdminListLoading] = useState(false);
+  const [adminActionId, setAdminActionId] = useState(null);
+
   const [nsType,    setNsType]    = useState('child');
   const [nsName,    setNsName]    = useState('');
   const [nsSubject, setNsSubject] = useState('');
@@ -117,12 +123,61 @@ export default function Dashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push('/auth'); return; }
       setUser(user);
+      try {
+        const s = await fetch('/api/admin/session');
+        const sd = await fetchJson(s);
+        if (sd.admin) {
+          setIsAdmin(true);
+          setAdminPendingCount(sd.pendingAccessRequests ?? 0);
+        }
+      } catch {
+        /* non-admin or network */
+      }
       await loadSpaces(user.id);
     } catch (e) {
       console.error('init error:', e);
     }
     setLoading(false);
   };
+
+  const loadAdminRequests = async () => {
+    setAdminListLoading(true);
+    try {
+      const r = await fetch('/api/admin/access-requests');
+      const d = await fetchJson(r);
+      if (d.error) {
+        setError(d.error);
+        return;
+      }
+      setAccessRequests(d.requests || []);
+      setAdminPendingCount(typeof d.pendingCount === 'number' ? d.pendingCount : (d.requests || []).filter((x) => x.status === 'pending').length);
+    } catch (e) {
+      setError(e.message || 'Could not load requests');
+    }
+    setAdminListLoading(false);
+  };
+
+  const handleAccessRequestAction = async (id, action) => {
+    setAdminActionId(id);
+    setError('');
+    try {
+      const r = await fetch('/api/admin/access-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action }),
+      });
+      const d = await fetchJson(r);
+      if (d.error) setError(d.error);
+      await loadAdminRequests();
+    } catch (e) {
+      setError(e.message || 'Action failed');
+    }
+    setAdminActionId(null);
+  };
+
+  useEffect(() => {
+    if (isAdmin && view === 'admin') loadAdminRequests();
+  }, [isAdmin, view]);
 
   const loadSpaces = async (uid) => {
     try {
@@ -691,7 +746,21 @@ export default function Dashboard() {
           ))}
           <button className="hs-add-space-btn" onClick={()=>setShowNew(true)}>＋ New Space</button>
         </div>
-        {activeSpace && (
+        {isAdmin && (
+          <div style={{ padding: '0 14px 10px' }}>
+            <button
+              type="button"
+              className={`hs-nav-item ${view === 'admin' ? 'active' : ''}`}
+              style={{ width: '100%' }}
+              onClick={() => setView('admin')}
+            >
+              <span className="hs-nav-icon">📋</span>
+              Access requests
+              {adminPendingCount > 0 ? <span className="hs-nav-badge">{adminPendingCount}</span> : null}
+            </button>
+          </div>
+        )}
+        {activeSpace && view !== 'admin' && (
           <nav className="hs-nav">
             <div className="hs-nav-lbl">Views</div>
             {[{id:'home',icon:'⌂',label:t.dashboard},{id:'memories',icon:'🌸',label:t.memories,badge:memories.length||null},{id:'story',icon:'📖',label:t.story},{id:'timeline',icon:'📅',label:t.timeline}].map(n=>(
@@ -774,10 +843,16 @@ export default function Dashboard() {
             <div className="hs-modal" style={{maxHeight:'85vh'}} onClick={e=>e.stopPropagation()}>
               <div className="hs-modal-hd"><div className="hs-modal-bar"/><h2 className="hs-modal-title">{t.moreMenuTitle}</h2><p className="hs-modal-desc">{t.moreMenuDesc}</p></div>
               <div className="hs-modal-body" style={{paddingTop:0}}>
-                {activeSpace && <>
-                  <button type="button" className="hs-mob-more-row" onClick={()=>{ setShowMobileMore(false); setShowInvite(true); setInviteLink(''); }}>
-                    <span className="hs-mob-more-ic">👥</span><span>{t.inviteSomeone}</span>
-                  </button>
+            {isAdmin && (
+              <button type="button" className="hs-mob-more-row" onClick={() => { setShowMobileMore(false); setView('admin'); }}>
+                <span className="hs-mob-more-ic">📋</span>
+                <span>Access requests{adminPendingCount > 0 ? ` (${adminPendingCount})` : ''}</span>
+              </button>
+            )}
+            {activeSpace && <>
+              <button type="button" className="hs-mob-more-row" onClick={()=>{ setShowMobileMore(false); setShowInvite(true); setInviteLink(''); }}>
+                <span className="hs-mob-more-ic">👥</span><span>{t.inviteSomeone}</span>
+              </button>
                   <button type="button" className="hs-mob-more-row" onClick={()=>{ setShowMobileMore(false); setShowCartoon(true); }}>
                     <span className="hs-mob-more-ic">🎨</span><span>{t.cartoonAvatar}</span>
                   </button>
@@ -815,7 +890,7 @@ export default function Dashboard() {
         )}
 
         {/* No spaces setup */}
-        {spaces.length === 0 && (
+        {spaces.length === 0 && view !== 'admin' && (
           <div className="hs-setup-wrap">
             <div className="hs-setup-card">
               <div style={{fontSize:52,marginBottom:20}}>📖</div>
@@ -829,6 +904,89 @@ export default function Dashboard() {
                 {t.createASpace}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ADMIN — access requests */}
+        {isAdmin && view === 'admin' && (
+          <div className="hs-content hs-stagger">
+            <div className="hs-sec-row">
+              <span className="hs-sec-lbl">Beta · Access requests</span>
+            </div>
+            <p style={{ fontSize: 14, color: 'var(--ink3)', marginBottom: 20, maxWidth: 560, lineHeight: 1.65 }}>
+              Approve to add the email to the beta allowlist (they can sign up once{' '}
+              <code style={{ fontSize: 12 }}>HEMSAGA_BETA_ALLOWLIST=1</code> is on). Reject to dismiss without access.
+            </p>
+            {error && (
+              <div className="hs-err" style={{ marginBottom: 16 }}>
+                ⚠ {error}{' '}
+                <button type="button" className="btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => setError('')}>
+                  {t.dismiss}
+                </button>
+              </div>
+            )}
+            {adminListLoading ? (
+              <p style={{ color: 'var(--ink3)' }}>Loading…</p>
+            ) : accessRequests.length === 0 ? (
+              <div className="hs-empty">
+                <div className="hs-empty-icon">📭</div>
+                <div className="hs-empty-title">No requests yet</div>
+                <div className="hs-empty-desc">Submissions from the marketing site appear here.</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {accessRequests.map((row) => (
+                  <div
+                    key={row.id}
+                    style={{
+                      background: '#fff',
+                      border: '1px solid var(--ivory3)',
+                      borderRadius: 'var(--r)',
+                      padding: '16px 18px',
+                      boxShadow: 'var(--shsm)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: 'var(--ink)', fontSize: 15 }}>{row.email}</div>
+                        <div style={{ fontSize: 11, color: 'var(--ink4)', marginTop: 4 }}>
+                          {new Date(row.created_at).toLocaleString()}
+                          {row.status === 'pending' ? ' · pending' : ` · ${row.status}`}
+                          {row.processed_by ? ` · by ${row.processed_by}` : ''}
+                        </div>
+                      </div>
+                      {row.status === 'pending' && (
+                        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            className="btn-primary"
+                            style={{ padding: '8px 14px', fontSize: 12 }}
+                            disabled={adminActionId === row.id}
+                            onClick={() => handleAccessRequestAction(row.id, 'approve')}
+                          >
+                            {adminActionId === row.id ? '…' : 'Approve'}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-ghost"
+                            style={{ padding: '8px 14px', fontSize: 12, borderColor: 'rgba(180,80,80,.35)', color: '#8c4a3a' }}
+                            disabled={adminActionId === row.id}
+                            onClick={() => handleAccessRequestAction(row.id, 'reject')}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {row.message ? (
+                      <p style={{ marginTop: 12, fontSize: 13, color: 'var(--ink2)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+                        {row.message}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -1028,7 +1186,13 @@ export default function Dashboard() {
         {/* MOBILE NAV */}
         <nav className="hs-mob-nav">
           <div className="hs-mob-nav-inner">
-            {activeSpace && <>
+            {isAdmin && (
+              <button type="button" className={`hs-mob-nav-item ${view === 'admin' ? 'active' : ''}`} onClick={() => setView('admin')}>
+                <span>📋</span>
+                <span>Requests</span>
+              </button>
+            )}
+            {activeSpace && view !== 'admin' && <>
               {[{id:'home',icon:'⌂',label:t.dashboard},{id:'memories',icon:'🌸',label:t.memories},{id:'story',icon:'📖',label:t.story},{id:'timeline',icon:'📅',label:t.timeline}].map(n=>(
                 <button key={n.id} className={`hs-mob-nav-item ${view===n.id?'active':''}`} onClick={()=>setView(n.id)}>
                   <span>{n.icon}</span><span>{n.label}</span>
@@ -1037,7 +1201,7 @@ export default function Dashboard() {
               <button className="hs-mob-nav-item" onClick={()=>setShowAddMem(true)}><span>✦</span><span>{t.addMemory}</span></button>
               <button className="hs-mob-nav-item" onClick={()=>setShowNew(true)}><span>＋</span><span>{t.newSpace}</span></button>
             </>}
-            {!activeSpace&&<button className="hs-mob-nav-item active" onClick={()=>setShowNew(true)}><span>＋</span><span>{t.newSpace}</span></button>}
+            {!activeSpace && view !== 'admin' && <button className="hs-mob-nav-item active" onClick={()=>setShowNew(true)}><span>＋</span><span>{t.newSpace}</span></button>}
           </div>
         </nav>
       </div>
