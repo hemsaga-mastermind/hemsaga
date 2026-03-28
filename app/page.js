@@ -253,6 +253,20 @@ export default function Home() {
         .price-list li.muted::before { content:'—'; color:var(--text-light); font-weight:400; }
         .price-note { font-size:12px; color:var(--text-light); margin-top:20px; line-height:1.5; }
 
+        .trust-section { background: linear-gradient(180deg, rgba(214,229,216,0.35) 0%, rgba(250,247,242,0) 100%); padding: 64px 60px 72px; border-top: 1px solid rgba(201,184,168,0.2); border-bottom: 1px solid rgba(201,184,168,0.15); }
+        .trust-inner { max-width: 1100px; margin: 0 auto; }
+        .trust-intro { font-size: 15px; line-height: 1.7; color: var(--text-mid); max-width: 560px; margin-bottom: 36px; }
+        .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+        .trust-card { background: white; border-radius: 18px; padding: 26px 24px; border: 1px solid rgba(201,184,168,0.28); transition: transform 0.3s ease, box-shadow 0.3s;
+          box-shadow: 0 2px 12px rgba(46,33,24,0.04); }
+        .trust-card:hover { transform: translateY(-3px); box-shadow: 0 14px 40px rgba(46,33,24,0.08); }
+        .trust-icon { font-size: 22px; line-height: 1; margin-bottom: 14px; display: block; }
+        .trust-card h3 { font-family: 'Cormorant Garamond', serif; font-size: 19px; font-weight: 600; color: var(--text-dark); margin-bottom: 8px; }
+        .trust-card p { font-size: 13px; line-height: 1.65; color: var(--text-mid); margin: 0; }
+        .trust-foot { margin-top: 28px; font-size: 12px; color: var(--text-light); line-height: 1.55; max-width: 640px; }
+        .trust-foot a { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgba(176,125,91,0.35); }
+        .trust-foot a:hover { border-bottom-color: var(--accent); }
+
         .request-overlay {
           position: fixed; inset: 0; z-index: 200;
           background: rgba(46,33,24,0.45); backdrop-filter: blur(8px);
@@ -320,6 +334,8 @@ export default function Home() {
           .family-visual{height:280px;}
           .cta-section{margin:0 22px 48px;padding:40px 24px;}
           .pricing-grid{grid-template-columns:1fr;}
+          .trust-section{padding:48px 22px 56px;}
+          .trust-grid{grid-template-columns:1fr;}
           footer{flex-direction:column;gap:10px;padding:28px 22px;text-align:center;}
           .float-pill{display:none;}
           .story-card{padding:28px 22px;}
@@ -416,9 +432,13 @@ export default function Home() {
           <a href="#how">Så funkar det</a>
           <a href="#family">Familjen</a>
           <a href="#pricing">Priser</a>
+          <a href="#trygghet">Trygghet</a>
           <a href="#story">Exempel</a>
         </div>
         <div className="nav-actions">
+          <a href="#trygghet" className="btn-nav-outline" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+            Trygghet
+          </a>
           <a href="#pricing" className="btn-nav-outline" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
             Priser
           </a>
@@ -563,6 +583,66 @@ export default function Home() {
             </ul>
             <p className="price-note">Betalning och Pro aktiveras när ni kopplar Stripe i er servermiljö (se projektets STRIPE-setup för utvecklare).</p>
           </div>
+        </div>
+      </section>
+
+      <section className="trust-section" id="trygghet" aria-labelledby="trygghet-heading">
+        <div className="trust-inner">
+          <p className="section-label reveal">Trygghet</p>
+          <h2 className="section-title reveal" id="trygghet-heading">
+            Era minnen förtjänar <em>respekt</em>
+          </h2>
+          <p className="trust-intro reveal">
+            Familjeberättelser är känsliga. Här är hur vi tänker kring säkerhet och integritet — ärligt formulerat, utan onödigt småprat.
+          </p>
+          <div className="trust-grid">
+            <div className="trust-card reveal">
+              <span className="trust-icon" aria-hidden="true">🔐</span>
+              <h3>Krypterad anslutning</h3>
+              <p>
+                All trafik till sidan och appen går över HTTPS (TLS), så det som skickas mellan er enhet och våra servrar är skyddat under överföring.
+              </p>
+            </div>
+            <div className="trust-card reveal">
+              <span className="trust-icon" aria-hidden="true">👥</span>
+              <h3>Ni styr vilka som ser</h3>
+              <p>
+                Ett Space är privat för er krets — bara folk ni bjuder in kan bidra och ta del. Det är inte ett öppet flöde som vem som helst kan hitta.
+              </p>
+            </div>
+            <div className="trust-card reveal">
+              <span className="trust-icon" aria-hidden="true">🗄️</span>
+              <h3>Säker lagring</h3>
+              <p>
+                Minnen och bilder lagras på infrastruktur byggd för produktion, med etablerad kryptering och åtkomstkontroll — där ni förväntar er att molntjänster sköter data.
+              </p>
+            </div>
+            <div className="trust-card reveal">
+              <span className="trust-icon" aria-hidden="true">🚫</span>
+              <h3>Inget annonslager</h3>
+              <p>
+                Vi säljer inte familjers innehåll eller beteende till annonsnätverk. Affärsmodellen är er prenumeration — inte er data som vara.
+              </p>
+            </div>
+            <div className="trust-card reveal">
+              <span className="trust-icon" aria-hidden="true">✨</span>
+              <h3>När ni använder AI (Pro)</h3>
+              <p>
+                Funktioner som väver text använder externa AI-leverantörer enligt deras villkor. Vi skickar i första hand det innehåll som behövs för att skapa kapitlet — inte hela kontot eller mer än nödvändigt för uppgiften.
+              </p>
+            </div>
+            <div className="trust-card reveal">
+              <span className="trust-icon" aria-hidden="true">🌱</span>
+              <h3>Privat beta, lugnt tempo</h3>
+              <p>
+                Vi tar in familjer stegvis så att vi kan hålla kvalitet, support och säkerhet i balans med hur snabbt vi växer.
+              </p>
+            </div>
+          </div>
+          <p className="trust-foot reveal">
+            Vill ni gräva djupare finns <a href="#">integritetspolicy</a> och <a href="#">villkor</a> (på gång). Frågor? Skriv till{' '}
+            <a href="mailto:hello@hemsaga.com">hello@hemsaga.com</a>.
+          </p>
         </div>
       </section>
 
