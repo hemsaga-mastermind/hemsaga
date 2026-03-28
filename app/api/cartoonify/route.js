@@ -2,6 +2,7 @@ import { getDb } from '../../../lib/supabase-server';
 import { getSessionUser } from '../../../lib/supabase-auth';
 import { isSpaceOwner, authJson } from '../../../lib/space-access';
 import { takeToken, rateLimitCartoonify, cartoonKeyFromRequest } from '../../../lib/rate-limit';
+import { assertProForSpace } from '../../../lib/entitlements';
 
 const SIGNED_URL_SEC = 900;
 
@@ -41,6 +42,9 @@ export async function POST(request) {
     const db = getDb();
     const owner = await isSpaceOwner(db, spaceId, user.id);
     if (!owner) return authJson('Not authorized', 403);
+
+    const proGate = await assertProForSpace(db, user.id);
+    if (!proGate.ok) return proGate.response;
 
     const { data: signed, error: signErr } = await db.storage
       .from('memories')

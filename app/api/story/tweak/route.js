@@ -7,6 +7,7 @@ import { getWritingLanguage } from '../../../../lib/langForAi.js';
 import { completeText } from '../../../../lib/ai/complete';
 import { parseAndValidateChapter } from '../../../../lib/ai/storyChapterJson.js';
 import { takeToken, rateLimitStoryTweak, tweakKeyFromUser } from '../../../../lib/rate-limit';
+import { assertProForSpace } from '../../../../lib/entitlements';
 
 export async function POST(request) {
   try {
@@ -20,6 +21,12 @@ export async function POST(request) {
 
     const owner = await isSpaceOwner(db, spaceId, user.id);
     if (!owner) return authJson('Not authorized', 403);
+
+    const { data: spBill } = await db.from('spaces').select('created_by').eq('id', spaceId).single();
+    if (spBill?.created_by) {
+      const proGate = await assertProForSpace(db, spBill.created_by);
+      if (!proGate.ok) return proGate.response;
+    }
 
     const rlCfg = rateLimitStoryTweak();
     const rl = takeToken(tweakKeyFromUser(user.id), rlCfg);

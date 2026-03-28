@@ -4,6 +4,7 @@
 import { getDb } from '../../../lib/supabase-server';
 import { getSessionUser } from '../../../lib/supabase-auth';
 import { canAccessSpace, isSpaceOwner, authJson } from '../../../lib/space-access';
+import { assertFreeMemoryLimit } from '../../../lib/entitlements';
 
 const SIGNED_URL_EXPIRY = 3600; // 1 hour in seconds
 
@@ -84,6 +85,12 @@ export async function POST(request) {
     const db = getDb();
     const allowed = await canAccessSpace(db, spaceId, { userId: user?.id, contributorId });
     if (!allowed) return authJson('Not authorized', 403);
+
+    const { data: billingSpace } = await db.from('spaces').select('created_by').eq('id', spaceId).maybeSingle();
+    if (billingSpace?.created_by) {
+      const memGate = await assertFreeMemoryLimit(db, spaceId, billingSpace.created_by);
+      if (!memGate.ok) return memGate.response;
+    }
 
     const row = {
       space_id: spaceId,

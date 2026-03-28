@@ -2,6 +2,7 @@
 import { getDb } from '../../../lib/supabase-server';
 import { getSessionUser } from '../../../lib/supabase-auth';
 import { isSpaceOwner, authJson } from '../../../lib/space-access';
+import { assertFreeSpaceLimit } from '../../../lib/entitlements';
 
 // GET /api/spaces — list spaces for the signed-in user (userId from session only)
 export async function GET() {
@@ -32,6 +33,13 @@ export async function POST(request) {
     const body = await request.json();
     const { name, space_type, cover_emoji, subject_name, subject_dob } = body;
     if (!name) return Response.json({ error: 'name required' }, { status: 400 });
+
+    const { count: spaceCount } = await db
+      .from('spaces')
+      .select('*', { count: 'exact', head: true })
+      .eq('created_by', user.id);
+    const gate = await assertFreeSpaceLimit(db, user.id, spaceCount ?? 0);
+    if (!gate.ok) return gate.response;
 
     const { data, error } = await db
       .from('spaces')

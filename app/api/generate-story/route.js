@@ -12,6 +12,7 @@ import {
   withSignedIllustrations,
   withSignedIllustrationsMany,
 } from '../../../lib/story/chapterIllustrations.js';
+import { assertProForSpace } from '../../../lib/entitlements';
 
 // Narrative voice adapted per space type
 const narrativePrompt = {
@@ -58,6 +59,9 @@ export async function POST(request) {
     if (spaceErr || !space) {
       return Response.json({ error: `Space not found: ${spaceErr?.message}` }, { status: 404 });
     }
+
+    const proGate = await assertProForSpace(db, space.created_by);
+    if (!proGate.ok) return proGate.response;
 
     // ── Load ALL memories across ALL contributors ────────────
     // No contributor_id filter — story engine sees everything

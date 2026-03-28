@@ -236,6 +236,23 @@ export default function Home() {
         .btn-cta-ghost { background:transparent; color:rgba(250,247,242,0.85); padding:13px 28px; border-radius:50px; font-size:12px; letter-spacing:1.4px; text-transform:uppercase; border:1px solid rgba(250,247,242,0.25); cursor:pointer; transition:all 0.3s; text-decoration:none; display:inline-block; font-family:'Jost',sans-serif; }
         .btn-cta-ghost:hover { border-color:rgba(250,247,242,0.55); color:#FAF7F2; }
 
+        .pricing-section { padding-bottom: 48px; }
+        .pricing-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:28px; max-width:920px; margin:0 auto; }
+        .price-card { background:white; border-radius:22px; padding:36px 32px; border:1px solid rgba(201,184,168,0.35); position:relative; overflow:hidden; }
+        .price-card.featured { border-color:rgba(176,125,91,0.55); box-shadow:0 18px 52px rgba(46,33,24,0.1); }
+        .price-card .badge { position:absolute; top:16px; right:16px; font-size:9px; letter-spacing:2px; text-transform:uppercase; background:var(--blush); color:var(--text-mid); padding:6px 12px; border-radius:999px; }
+        .price-name { font-family:'Cormorant Garamond',serif; font-size:24px; font-weight:600; color:var(--text-dark); margin-bottom:8px; }
+        .price-tagline { font-size:14px; color:var(--text-mid); line-height:1.55; margin-bottom:20px; }
+        .price-amount { font-family:'Cormorant Garamond',serif; font-size:38px; font-weight:600; color:var(--text-dark); }
+        .price-amount span { font-size:15px; font-weight:400; color:var(--text-light); font-family:'Jost',sans-serif; }
+        .price-sub { font-size:12px; color:var(--text-light); margin:6px 0 22px; }
+        .price-list { list-style:none; margin:0; padding:0; }
+        .price-list li { font-size:14px; color:var(--text-mid); padding:10px 0; border-top:1px solid rgba(201,184,168,0.2); display:flex; gap:10px; align-items:flex-start; }
+        .price-list li:first-of-type { border-top:none; }
+        .price-list li::before { content:'✓'; color:var(--accent); font-weight:600; flex-shrink:0; }
+        .price-list li.muted::before { content:'—'; color:var(--text-light); font-weight:400; }
+        .price-note { font-size:12px; color:var(--text-light); margin-top:20px; line-height:1.5; }
+
         .request-overlay {
           position: fixed; inset: 0; z-index: 200;
           background: rgba(46,33,24,0.45); backdrop-filter: blur(8px);
@@ -302,6 +319,7 @@ export default function Home() {
           .family-inner{grid-template-columns:1fr;padding:0 22px; gap:40px;}
           .family-visual{height:280px;}
           .cta-section{margin:0 22px 48px;padding:40px 24px;}
+          .pricing-grid{grid-template-columns:1fr;}
           footer{flex-direction:column;gap:10px;padding:28px 22px;text-align:center;}
           .float-pill{display:none;}
           .story-card{padding:28px 22px;}
@@ -317,10 +335,10 @@ export default function Home() {
           onClick={(e) => e.target === e.currentTarget && setRequestOpen(false)}
         >
           <div className="request-modal">
-            <button type="button" className="btn-close-modal" aria-label="Close" onClick={() => setRequestOpen(false)}>×</button>
-            <h3 id="request-title">Request access</h3>
+            <button type="button" className="btn-close-modal" aria-label="Stäng" onClick={() => setRequestOpen(false)}>×</button>
+            <h3 id="request-title">Begär åtkomst</h3>
             <p>
-              We&apos;re onboarding in small waves. Leave your email — we&apos;ll email you when you&apos;re cleared to sign up.
+              Vi släpper in i små vågor. Lämna din e-post — vi hör av oss när du kan skapa konto.
             </p>
             {requestFeedback && (
               <div className={`req-msg ${requestFeedback.startsWith('✓') ? 'ok' : 'err'}`}>{requestFeedback}</div>
@@ -328,7 +346,7 @@ export default function Home() {
             <input
               type="email"
               className="req-field"
-              placeholder="your@email.com"
+              placeholder="din@epost.se"
               autoComplete="email"
               value={requestEmail}
               onChange={(e) => setRequestEmail(e.target.value)}
@@ -336,12 +354,12 @@ export default function Home() {
             />
             <textarea
               className="req-field"
-              placeholder="Optional: a few words about you or your family (helps us prioritize)"
+              placeholder="Valfritt: några ord om dig eller familjen (hjälper oss prioritera)"
               value={requestMessage}
               onChange={(e) => setRequestMessage(e.target.value)}
               disabled={requestSubmitting}
             />
-            <p className="req-hint">Prefer email? <a href={REQUEST_MAILTO} style={{ color: 'var(--accent)' }}>Open your mail app</a></p>
+            <p className="req-hint">Föredrar e-post? <a href={REQUEST_MAILTO} style={{ color: 'var(--accent)' }}>Öppna mejlprogrammet</a></p>
             <div className="request-modal-btns">
               <button
                 type="button"
@@ -352,7 +370,7 @@ export default function Home() {
                   setRequestFeedback('');
                   const em = requestEmail.trim();
                   if (!em || !em.includes('@')) {
-                    setRequestFeedback('Please enter a valid email.');
+                    setRequestFeedback('Ange en giltig e-postadress.');
                     return;
                   }
                   setRequestSubmitting(true);
@@ -364,26 +382,26 @@ export default function Home() {
                     });
                     const data = await res.json().catch(() => ({}));
                     if (res.status === 429) {
-                      setRequestFeedback(`Too many tries. Wait ${data.retryAfter || 60}s and try again.`);
+                      setRequestFeedback(`För många försök. Vänta ${data.retryAfter || 60} s och försök igen.`);
                     } else if (data.error) {
                       setRequestFeedback(data.error);
                     } else if (data.duplicate) {
-                      setRequestFeedback('✓ We already have your request — sit tight.');
+                      setRequestFeedback('✓ Vi har redan din förfrågan — håll utkik.');
                     } else {
-                      setRequestFeedback('✓ Thanks! We’ll be in touch.');
+                      setRequestFeedback('✓ Tack! Vi hör av oss.');
                       setRequestEmail('');
                       setRequestMessage('');
                     }
                   } catch {
-                    setRequestFeedback('Something went wrong. Try again or use email below.');
+                    setRequestFeedback('Något gick fel. Försök igen eller mejla oss.');
                   }
                   setRequestSubmitting(false);
                 }}
               >
-                {requestSubmitting ? 'Sending…' : 'Submit request'}
+                {requestSubmitting ? 'Skickar…' : 'Skicka'}
               </button>
               <button type="button" className="btn-ghost" onClick={() => setRequestOpen(false)}>
-                Close
+                Stäng
               </button>
             </div>
           </div>
@@ -395,15 +413,19 @@ export default function Home() {
           <span>📖</span> Hemsaga
         </Link>
         <div className="nav-links">
-          <a href="#how">How it works</a>
-          <a href="#family">Family</a>
-          <a href="#story">Sample</a>
+          <a href="#how">Så funkar det</a>
+          <a href="#family">Familjen</a>
+          <a href="#pricing">Priser</a>
+          <a href="#story">Exempel</a>
         </div>
         <div className="nav-actions">
+          <a href="#pricing" className="btn-nav-outline" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+            Priser
+          </a>
           <button type="button" className="btn-nav-outline" onClick={() => setRequestOpen(true)}>
-            Request access
+            Begär åtkomst
           </button>
-          <a href="/auth" className="btn-nav">Sign in</a>
+          <a href="/auth" className="btn-nav">Logga in</a>
         </div>
       </nav>
 
@@ -412,31 +434,31 @@ export default function Home() {
         <div className="blob blob-2" />
         <div className="blob blob-3" />
 
-        <div className="hero-tag">Private beta</div>
+        <div className="hero-tag">Privat beta</div>
 
         <h1 className="hero-title">
-          Your family&apos;s <em>memories</em>, woven into a story
+          Bevara dina <em>familjeminnen</em> för alltid
         </h1>
 
         <p className="hero-subtitle">
-          Invite-only for now. Have a link from a space owner? You&apos;re in.
+          Samla stunder och bjud in familjen. På Pro vävs minnen till varma kapitel med AI — så att berättelsen lever vidare. Just nu: inbjudan och små vågor; logga in om du redan har plats.
         </p>
 
         <div className="hero-buttons">
           <button type="button" className="btn-primary" onClick={() => setRequestOpen(true)}>
-            Request access
+            Begär åtkomst
           </button>
-          <a href="/auth" className="btn-ghost">Sign in</a>
-          <a href="#story" className="hero-link-sample">See sample story ↓</a>
+          <a href="/auth" className="btn-ghost">Logga in</a>
+          <a href="#story" className="hero-link-sample">Se exempel ↓</a>
         </div>
 
         <div className="story-preview-wrapper" id="story">
-          <div className="float-pill pill-1">Memory logged</div>
-          <div className="float-pill pill-2">Chapter woven</div>
-          <div className="float-pill pill-3">Shared with family</div>
+          <div className="float-pill pill-1">Minne sparat</div>
+          <div className="float-pill pill-2">Kapitel vävt</div>
+          <div className="float-pill pill-3">Delat med familjen</div>
           <div className="story-card">
             <div className="story-card-meta">
-              <div className="story-chapter-tag">Sample chapter</div>
+              <div className="story-chapter-tag">Exempelkapitel</div>
               <div className="story-page-label">Chapter 4</div>
             </div>
             <h2 className="story-title">Nine Months Old — A Tuesday Morning</h2>
@@ -455,18 +477,18 @@ export default function Home() {
         </div>
       </section>
 
-      <div className="section-divider"><span>How it works</span></div>
+      <div className="section-divider"><span>Så funkar det</span></div>
 
       <section className="section" id="how">
-        <p className="section-label reveal">The process</p>
+        <p className="section-label reveal">Processen</p>
         <h2 className="section-title reveal">
-          Three steps. One <em>story</em>.
+          Tre steg. En <em>berättelse</em>.
         </h2>
         <div className="steps-grid">
           {[
-            { icon:'🌸', bg:'icon-blush', num:'01', title:'Log a moment', desc:'Text or photo from the app — quick and low-friction.' },
-            { icon:'✦', bg:'icon-sage', num:'02', title:'AI weaves it in', desc:'Contributions from everyone become a warm chapter.' },
-            { icon:'📖', bg:'icon-lavender', num:'03', title:'Read & share', desc:'Your story grows over time — read it together anytime.' },
+            { icon:'🌸', bg:'icon-blush', num:'01', title:'Logga en stund', desc:'Text eller foto från telefonen — snabbt och enkelt.' },
+            { icon:'✦', bg:'icon-sage', num:'02', title:'AI väver ihop (Pro)', desc:'Allas röster blir ett varmt kapitel när du vill aktivera storytelling.' },
+            { icon:'📖', bg:'icon-lavender', num:'03', title:'Läs och dela', desc:'Sagan växer över tid — läs tillsammans när som helst.' },
           ].map((s, i) => (
             <div className="step-card reveal" key={i}>
               <div className={`step-icon ${s.bg}`}>{s.icon}</div>
@@ -482,56 +504,94 @@ export default function Home() {
         <div className="family-inner">
           <div className="family-visual reveal">
             <div className="family-bubble bubble-1">
-              <div className="bubble-role">From afar</div>
-              <div className="bubble-text">&quot;He stood up today — just grinning at the sofa.&quot;</div>
+              <div className="bubble-role">På distans</div>
+              <div className="bubble-text">&quot;Han stod upp idag — och flinade bara mot soffan.&quot;</div>
             </div>
             <div className="family-bubble bubble-2">
-              <div className="bubble-role">At home</div>
-              <div className="bubble-text">&quot;We could tell he&apos;d been planning this.&quot;</div>
+              <div className="bubble-role">Hemma</div>
+              <div className="bubble-text">&quot;Vi såg direkt att han tänkt ut det här länge.&quot;</div>
             </div>
             <div className="family-bubble bubble-3">
-              <div className="bubble-role">Grandparent</div>
-              <div className="bubble-text">&quot;I watched it four times. My heart is so full.&quot;</div>
+              <div className="bubble-role">Morbroor</div>
+              <div className="bubble-text">&quot;Jag såg klippet fyra gånger. Hjärtat fullt.&quot;</div>
             </div>
           </div>
           <div className="family-content reveal">
-            <p className="section-label">Together</p>
+            <p className="section-label">Tillsammans</p>
             <h2 className="section-title">
-              Every voice adds a <em>layer</em>
+              Varje röst lägger till ett <em>lager</em>
             </h2>
             <p className="family-desc">
-              Parents, grandparents, friends — Hemsaga brings those voices into one narrative you can read for years.
+              Föräldrar, mor- och farföräldrar, vänner — Hemsaga samlar rösterna i en berättelse ni kan återvända till i åratal.
             </p>
           </div>
         </div>
       </div>
 
+      <div className="section-divider"><span>Priser</span></div>
+
+      <section className="section pricing-section" id="pricing">
+        <p className="section-label reveal">Per familj</p>
+        <h2 className="section-title reveal">
+          Börja gratis, <em>väx</em> med Pro
+        </h2>
+        <div className="pricing-grid">
+          <div className="price-card reveal">
+            <div className="price-name">Free</div>
+            <p className="price-tagline">Prova Hemsaga och samla minnen utan att binda dig.</p>
+            <div className="price-amount">0 <span>kr</span></div>
+            <p className="price-sub">Alltid</p>
+            <ul className="price-list">
+              <li>1 Space</li>
+              <li>Upp till 10 minnen per Space</li>
+              <li className="muted">Ingen AI-storytelling eller AI-bilder</li>
+              <li>Dela Space med familjen</li>
+            </ul>
+            <p className="price-note">Perfekt för att känna på produkten innan ni väver längre kapitel.</p>
+          </div>
+          <div className="price-card featured reveal">
+            <div className="badge">Pro</div>
+            <div className="price-name">Hemsaga Pro</div>
+            <p className="price-tagline">Oändliga ytor för minnen, AI som väver kapitel och trygg bildlagring.</p>
+            <div className="price-amount">99 <span>kr / mån</span></div>
+            <p className="price-sub">eller 799 kr / år — en plan per familj</p>
+            <ul className="price-list">
+              <li>Obegränsat antal Spaces</li>
+              <li>AI som väver sagokapitel och justerar kapitel</li>
+              <li>AI-bilder (t.ex. stiliserade foton) där det stöds</li>
+              <li>Fotoarkiv som växer med er berättelse</li>
+            </ul>
+            <p className="price-note">Betalning och Pro aktiveras när ni kopplar Stripe i er servermiljö (se projektets STRIPE-setup för utvecklare).</p>
+          </div>
+        </div>
+      </section>
+
       <div className="quote-section reveal">
         <div className="quote-mark">&ldquo;</div>
         <p className="quote-text">
-          One day they&apos;ll ask what they were like when they were little. You&apos;ll have the story.
+          En dag frågar de hur de var när de var små. Då har ni redan sagan.
         </p>
-        <div className="quote-author">Start today</div>
+        <div className="quote-author">Börja idag</div>
       </div>
 
       <div className="cta-section reveal">
-        <h2 className="cta-title">Join the beta</h2>
+        <h2 className="cta-title">Gå med i betan</h2>
         <p className="cta-subtitle">
-          Request access or sign in if you already run a space.
+          Begär åtkomst eller logga in om du redan driver ett Space.
         </p>
         <div className="cta-buttons">
           <button type="button" className="btn-cta-primary" onClick={() => setRequestOpen(true)}>
-            Request access
+            Begär åtkomst
           </button>
-          <a href="/auth" className="btn-cta-ghost">Sign in</a>
+          <a href="/auth" className="btn-cta-ghost">Logga in</a>
         </div>
       </div>
 
       <footer>
         <div>© 2026 Hemsaga</div>
         <div style={{display:'flex', gap:'20px', flexWrap:'wrap', justifyContent:'center'}}>
-          <a href="#">Privacy</a>
-          <a href="#">Terms</a>
+          <a href="#">Integritet</a>
+          <a href="#">Villkor</a>
           <a href="mailto:hello@hemsaga.com">hello@hemsaga.com</a>
         </div>
       </footer>
